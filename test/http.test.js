@@ -1,7 +1,7 @@
 // -----------------------------------------------------------------------------
 // lenientFetch against a loopback socket replaying VLC 3.0.20's own bytes:
 // its /art answer separates the headers by a bare "\n", which Node's fetch
-// refuses (HPE_INVALID_HEADER_TOKEN). Nothing leaves the test process.
+// refuses (an HPE_ parser error). Nothing leaves the test process.
 // -----------------------------------------------------------------------------
 
 import { test } from 'node:test';
@@ -38,10 +38,7 @@ const vlcArt = () =>
 
 test("VLC's /art answer, refused by Node's fetch, is read", async (t) => {
   const { url } = await rawServer(t, () => vlcArt());
-  await assert.rejects(
-    fetch(`${url}/art`),
-    (err) => err.cause?.code === 'HPE_INVALID_HEADER_TOKEN',
-  );
+  await assert.rejects(fetch(`${url}/art`), (err) => /^HPE_/.test(err.cause?.code ?? ''));
   const response = await lenientFetch(`${url}/art`);
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('content-type'), 'image/png');

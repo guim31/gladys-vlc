@@ -257,7 +257,7 @@ répond du texte dont les libellés suivent la langue de VLC (« Stream 0 », «
 
 - **`/art` n'est pas du HTTP valide** : les en-têtes sont séparés par un `\n` nu
   (`share/lua/intf/http.lua`, `callback_art`). Le `fetch` de Node refuse
-  (`HPE_INVALID_HEADER_TOKEN`), curl et les navigateurs acceptent. Toutes les requêtes passent par
+  (`HPE_INVALID_HEADER_TOKEN` en Node 22, `HPE_CR_EXPECTED` en Node 24), curl et les navigateurs acceptent. Toutes les requêtes passent par
   `src/vlc/http.js` (`node:http` avec `insecureHTTPParser`) ; `test/http.test.js` rejoue les octets
   exacts de VLC.
 - `status.json` est servi en `text/plain` : parser le texte. Mauvais mot de passe : 401 en HTTP/1.0.
