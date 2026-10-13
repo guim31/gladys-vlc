@@ -1,6 +1,6 @@
 {
   "name": "gladys-vlc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Gladys Assistant integration for VLC media player: playback, volume, now playing, web radios, announcements, scenes and a dashboard widget.",
   "type": "module",

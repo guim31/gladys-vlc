@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-10-13
+
 ### Added
 
 - One device per VLC (up to three), through VLC's web interface: playing
@@ -28,4 +30,5 @@ the notes of the version's GitHub Release.
 - "Test the connection" action, connection status per VLC.
 - Texts and documentation in English, French, German and Spanish.
 
-[Unreleased]: https://github.com/guim31/gladys-vlc/commits/main
+[Unreleased]: https://github.com/guim31/gladys-vlc/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/guim31/gladys-vlc/releases/tag/v1.0.1
