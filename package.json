@@ -1,8 +1,8 @@
 {
-  "name": "gladys-integration-template-js",
+  "name": "gladys-vlc",
   "version": "1.0.0",
   "private": true,
-  "description": "Official starter template to build an external integration for Gladys Assistant with the JavaScript SDK.",
+  "description": "Gladys Assistant integration for VLC media player: playback, volume, now playing, web radios, announcements, scenes and a dashboard widget.",
   "type": "module",
   "main": "index.js",
   "scripts": {

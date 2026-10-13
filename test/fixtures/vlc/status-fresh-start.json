@@ -1,0 +1,29 @@
+{
+  "audiodelay": 0,
+  "subtitledelay": 0,
+  "repeat": false,
+  "fullscreen": 0,
+  "length": 0,
+  "apiversion": 3,
+  "equalizer": [],
+  "currentplid": -1,
+  "volume": 200,
+  "rate": 1,
+  "random": false,
+  "loop": false,
+  "version": "3.0.20 Vetinari",
+  "time": 0,
+  "position": 0,
+  "state": "stopped",
+  "seek_sec": 10,
+  "videoeffects": {
+    "contrast": 1,
+    "hue": 0,
+    "saturation": 1,
+    "gamma": 1,
+    "brightness": 1
+  },
+  "audiofilters": {
+    "filter_0": ""
+  }
+}

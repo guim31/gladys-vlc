@@ -1,0 +1,72 @@
+{
+  "information": {
+    "title": 0,
+    "titles": [],
+    "category": {
+      "Stream 0": {
+        "Type": "Audio",
+        "Codec": "MPEG Audio layer 1/2 (mpga)",
+        "Sample_rate": "44100 Hz",
+        "Bitrate": "128 kb/s",
+        "Channels": "Mono",
+        "Bits_per_sample": "32"
+      },
+      "meta": {
+        "genre": "Test",
+        "now_playing": "Gladys Test Orchestra - Live Tone",
+        "filename": "stream",
+        "title": "Radio Synthetique"
+      }
+    },
+    "chapter": 0,
+    "chapters": []
+  },
+  "currentplid": 11,
+  "seek_sec": 10,
+  "audiodelay": 0,
+  "fullscreen": 0,
+  "time": 4,
+  "subtitledelay": 0,
+  "stats": {
+    "demuxdiscontinuity": 0,
+    "sendbitrate": 0,
+    "sentpackets": 0,
+    "sentbytes": 0,
+    "readpackets": 13,
+    "lostabuffers": 0,
+    "displayedpictures": 0,
+    "averageinputbitrate": 0,
+    "averagedemuxbitrate": 0,
+    "demuxbitrate": 0.016001539304852,
+    "playedabuffers": 202,
+    "demuxcorrupted": 0,
+    "decodedaudio": 405,
+    "lostpictures": 0,
+    "demuxreadpackets": 0,
+    "inputbitrate": 0.020464889705181,
+    "decodedvideo": 0,
+    "demuxreadbytes": 85680,
+    "readbytes": 106496
+  },
+  "equalizer": [],
+  "repeat": false,
+  "loop": false,
+  "state": "playing",
+  "random": false,
+  "videoeffects": {
+    "contrast": 1,
+    "gamma": 1,
+    "hue": 0,
+    "saturation": 1,
+    "brightness": 1
+  },
+  "version": "3.0.20 Vetinari",
+  "audiofilters": {
+    "filter_0": ""
+  },
+  "volume": 200,
+  "apiversion": 3,
+  "position": 0,
+  "rate": 1,
+  "length": 0
+}

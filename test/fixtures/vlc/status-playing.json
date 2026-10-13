@@ -1,0 +1,73 @@
+{
+  "information": {
+    "title": 0,
+    "titles": [],
+    "category": {
+      "Stream 0": {
+        "Type": "Audio",
+        "Codec": "MPEG Audio layer 1/2 (mpga)",
+        "Sample_rate": "44100 Hz",
+        "Bitrate": "160 kb/s",
+        "Channels": "Mono",
+        "Bits_per_sample": "32"
+      },
+      "meta": {
+        "title": "Test Tone 1",
+        "filename": "tone1.mp3",
+        "album": "Synthetic Album",
+        "track_number": "1",
+        "artist": "Gladys Test Orchestra"
+      }
+    },
+    "chapter": 0,
+    "chapters": []
+  },
+  "currentplid": 4,
+  "seek_sec": 10,
+  "audiodelay": 0,
+  "fullscreen": 0,
+  "time": 2,
+  "subtitledelay": 0,
+  "stats": {
+    "demuxdiscontinuity": 0,
+    "sendbitrate": 0,
+    "sentpackets": 0,
+    "sentbytes": 0,
+    "readpackets": 18,
+    "lostabuffers": 0,
+    "displayedpictures": 0,
+    "averageinputbitrate": 0,
+    "averagedemuxbitrate": 0,
+    "demuxbitrate": 0.0039812522009015,
+    "playedabuffers": 151,
+    "demuxcorrupted": 0,
+    "decodedaudio": 303,
+    "lostpictures": 0,
+    "demuxreadpackets": 0,
+    "inputbitrate": 0.0040205186232924,
+    "decodedvideo": 0,
+    "demuxreadbytes": 17370,
+    "readbytes": 18432
+  },
+  "equalizer": [],
+  "repeat": false,
+  "loop": false,
+  "state": "playing",
+  "random": false,
+  "videoeffects": {
+    "contrast": 1,
+    "gamma": 1,
+    "hue": 0,
+    "saturation": 1,
+    "brightness": 1
+  },
+  "version": "3.0.20 Vetinari",
+  "audiofilters": {
+    "filter_0": ""
+  },
+  "volume": 128,
+  "apiversion": 3,
+  "position": 0.049977723509073,
+  "rate": 1,
+  "length": 60
+}

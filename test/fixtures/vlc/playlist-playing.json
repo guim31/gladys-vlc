@@ -1,0 +1,56 @@
+{
+  "type": "node",
+  "ro": "rw",
+  "name": "",
+  "id": "0",
+  "children": [
+    {
+      "type": "node",
+      "ro": "ro",
+      "name": "Playlist",
+      "id": "1",
+      "children": [
+        {
+          "type": "leaf",
+          "duration": 60,
+          "ro": "rw",
+          "name": "Test Tone 1",
+          "id": "4",
+          "uri": "file:///home/alice/Music/tone1.mp3"
+        },
+        {
+          "type": "leaf",
+          "duration": 120,
+          "ro": "rw",
+          "name": "Test Tone 2",
+          "current": "current",
+          "uri": "file:///home/alice/Music/tone2.mp3",
+          "id": "5"
+        },
+        {
+          "type": "leaf",
+          "duration": 180,
+          "ro": "rw",
+          "name": "Test Tone 3",
+          "id": "6",
+          "uri": "file:///home/alice/Music/tone3.mp3"
+        },
+        {
+          "type": "leaf",
+          "duration": 30,
+          "ro": "rw",
+          "name": "untagged.wav",
+          "id": "7",
+          "uri": "file:///home/alice/Music/untagged.wav"
+        }
+      ]
+    },
+    {
+      "type": "node",
+      "ro": "ro",
+      "name": "Media Library",
+      "id": "2",
+      "children": []
+    }
+  ]
+}

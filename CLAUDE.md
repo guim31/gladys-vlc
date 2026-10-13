@@ -16,8 +16,8 @@ its only runtime dependency. It started from the official JavaScript template.
 ```bash
 npm install
 npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
+node --test test/hub.test.js              # one file
+node --test --test-name-pattern "mute"    # tests whose name matches
 npm run lint                              # ESLint
 npm run format:check                      # Prettier, as the CI runs it
 npm run format                            # Prettier, fix in place
@@ -31,15 +31,23 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
+index.js                          SDK wiring only: registerHandlers, then connect()
+src/app.js                        every SDK handler, registered on the client (also the tests' entry)
+src/hub.js                        one VlcInstance per slot: devices, states, triggers, status, commands, artwork
+src/instance.js                   one VLC: its own polling timer, snapshot, playback events, commands, announcements
+src/devices.js                    device and feature definitions, snapshot -> states
+src/vlc/client.js                 VLC web interface client (status.json + commands, playlist.json, /art)
+src/vlc/http.js                   lenientFetch: node:http with the lenient parser (VLC's /art is not valid HTTP)
+src/vlc/model.js                  status.json -> snapshot, volume scale, playback events
+src/vlc/mrl.js                    what a scene may make VLC play (media schemes, absolute paths)
 src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+src/widgets.js                    the "VLC player" widget (manifest `widgets`)
+src/texts.js                      every text the container writes, in en/fr/de/es
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
+src/store.js, src/issues.js       /data persistence (mute volumes), once-per-outage logging
+gladys-assistant-integration.json manifest: name, config_schema, actions, scenes, widget, image...
+docs/{en,fr,de,es}.md             user documentation, re-hosted by Gladys, same sections
+test/helpers/fakeVlc.js           an in-memory VLC answering the bodies recorded in test/fixtures/vlc/
 test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
 .github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
 ```
@@ -70,8 +78,10 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** is in four languages (English, French, German with
+  "du", Spanish with "usted"): action messages, manifest texts, feature names,
+  widget texts, and `docs/en.md`, `docs/fr.md`, `docs/de.md`, `docs/es.md`,
+  kept in sync (`test/i18n.test.js`).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
 
@@ -233,3 +243,61 @@ long, et sur un « Sie »/« Ihr… » de politesse en allemand. Le store exige 
 - Docs `en`, `fr`, `de`, `es` avec les mêmes sections.
 - Chauffe, ouverture, sécurité : ne rien rendre pilotable « comme un thermostat » ou par un assistant
   vocal quand une erreur serait dangereuse (leçon d'OctoPrint).
+
+## Intégration VLC (13/10/2026)
+
+**Choix de l'interface : l'interface web Lua (HTTP), pas telnet.** `status.json` donne d'un coup
+l'état, le volume, la position, la durée, l'élément courant (`currentplid`) et tous ses tags
+(`now_playing` d'une radio web, `artwork_url`), `/art` sert la pochette ; chaque requête est
+autonome (Basic, utilisateur vide). Telnet (Home Assistant, `aiovlc`) demande une session ouverte et
+répond du texte dont les libellés suivent la langue de VLC (« Stream 0 », « Type »… traduits).
+
+**Mesuré sur un vrai VLC 3.0.20** (Ubuntu, `cvlc`, sortie ALSA `null`), fixtures dans
+`test/fixtures/vlc/` (chemins et adresses anonymisés) :
+
+- **`/art` n'est pas du HTTP valide** : les en-têtes sont séparés par un `\n` nu
+  (`share/lua/intf/http.lua`, `callback_art`). Le `fetch` de Node refuse
+  (`HTTPParserError`, code `HPE_INVALID_HEADER_TOKEN` en Node 22, sans code en Node 24), curl et les navigateurs acceptent. Toutes les requêtes passent par
+  `src/vlc/http.js` (`node:http` avec `insecureHTTPParser`) ; `test/http.test.js` rejoue les octets
+  exacts de VLC.
+- `status.json` est servi en `text/plain` : parser le texte. Mauvais mot de passe : 401 en HTTP/1.0.
+  VLC refuse de lancer l'interface web sans mot de passe.
+- **Volume** : 256 = 100 %. Le curseur de VLC monte à 125 % (320), la commande `volume` accepte 600
+  et plus, sans borne. Gladys publie `min(100, %)` et règle 0-100.
+- **Pas de sourdine lisible** : la touche `key=vol-mute` agit peut-être, mais `status.json` n'en dit
+  rien (volume inchangé). Sourdine émulée comme Home Assistant : volume 0, volume précédent retenu
+  (dans `/data/vlc-state.json`).
+- `pl_pause` bascule et **démarre la lecture depuis l'arrêt** ; `pl_forcepause` / `pl_forceresume`
+  n'agissent que dans le bon état (idempotents) : les boutons Lire/Pause s'appuient dessus.
+- `in_play` ajoute **à la fin** de la playlist et joue ; à la fin du dernier élément VLC s'arrête
+  (`currentplid` -1). `pl_empty` arrête la lecture. `pl_delete`, marqué « completely UNSUPPORTED »
+  dans le README de VLC, marche en 3.0.20.
+- Le nœud « Playlist » de `playlist.json` a l'id `1`, mais son **nom suit la langue de VLC**.
+- Radio web ICY : `title` = nom de la station (`icy-name`), `now_playing` = le morceau ; `length` 0.
+  Fichier sans tag : seul `filename`. Les ids d'éléments ne sont jamais réutilisés.
+- **`artwork_url` peut arriver avant que `/art` réponde** (404 au premier essai) : /art est
+  redemandé aux lectures suivantes, 3 fois au plus par élément.
+- `vlc://quit` ferme VLC, `screen://`, `dshow://`, `v4l2://` filment l'écran ou une caméra : une
+  scène ne peut faire jouer que des schémas de média et des chemins absolus (`src/vlc/mrl.js`).
+- VLC ne s'annonce ni en mDNS ni en SSDP : pas de découverte, adresse saisie. `localhost` est le
+  conteneur : refusé avec un message dédié.
+
+**Annonce (« Parler sur une enceinte »)** : la valeur reçue sur `music/play_notification` est l'URL
+du MP3. `in_play`, puis l'id de l'annonce lu dans `playlist.json` (dernier élément) ; à sa fin :
+`pl_delete`, et si VLC jouait, `pl_play` de l'élément d'avant puis `seek` à sa position (fichier).
+Les déclencheurs sont retenus pendant l'annonce et la reprise. Vérifié sur le vrai VLC (radio web
+et fichier).
+
+**Sondage** : `should_poll: false` ; minuteur par instance (`src/instance.js`) : 3 s en lecture,
+5 s à l'arrêt, 1 min pour un appareil pas encore ajouté (statut de connexion seulement, aucun état
+publié), 30 s VLC fermé ; 0,3 s après une commande. Deux réponses manquées de suite pour passer
+« Éteint ». Heartbeat 6 h par `publishChangedStates`.
+
+**Pièges des tests** :
+
+- Une `Response` réutilisée par `clone()` dans un faux `fetch` : `body.cancel()` attend l'autre
+  branche du `tee` et le test ne finit jamais. Construire une `Response` neuve à chaque appel.
+- `t.mock.timers.enable({ apis: ['Date'] })` fige `Date.now()` et bloque les boucles d'attente
+  (`until`) : vérifier l'option `heartbeat` passée au SDK plutôt que d'avancer l'horloge.
+- Pour un vrai VLC dans la session : `cvlc` refuse root (utilisateur dédié) ; `-A dummy` donne un
+  volume toujours à 0, prendre `-A alsa --alsa-audio-device null`.
