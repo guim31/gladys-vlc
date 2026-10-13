@@ -3,7 +3,7 @@
 //
 // VLC's Lua web server writes the headers of /art (the artwork) separated by
 // a bare "\n" instead of "\r\n" (share/lua/intf/http.lua, callback_art).
-// Node's fetch refuses such an answer (an HPE_ parser error), curl and
+// Node's fetch refuses such an answer (an HTTPParserError), curl and
 // the browsers accept it. node:http with `insecureHTTPParser` accepts it too;
 // it is used for every request to VLC, on the local network only.
 //
