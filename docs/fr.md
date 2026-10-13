@@ -1,67 +1,248 @@
-# Template de démonstration
+# VLC
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Pilotez [VLC media player](https://www.videolan.org/vlc/) depuis Gladys : sur
+un ordinateur, un Raspberry Pi ou un serveur, suivez ce qu'il joue, commandez
+la lecture et le volume, lancez une radio web ou un fichier depuis une scène,
+et faites entendre les annonces de Gladys sur ses haut-parleurs.
 
-## Ce que vous obtenez
+Cette intégration n'est pas affiliée à VideoLAN. VLC est une marque de
+VideoLAN.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+## Présentation
+
+L'intégration parle à VLC par son **interface web** (l'interface HTTP Lua,
+port 8080), sur votre réseau local uniquement : ni cloud, ni compte.
+
+- **Un appareil par VLC** (jusqu'à trois) : état, titre, artiste, album,
+  progression, temps restant, volume, et les boutons lire, pause, stop,
+  précédent, suivant et sourdine.
+- Le widget **Musique** du tableau de bord du cœur fonctionne avec lui
+  (lecture/pause, précédent, suivant, volume).
+- **Annonces** : l'action de scène **Parler sur une enceinte** du cœur joue
+  sur VLC, puis ce qui jouait reprend.
+- Un widget **Lecteur VLC**, quatre **déclencheurs de scène** (lecture
+  démarrée, en pause, reprise, arrêtée) et deux **actions de scène** (lire une
+  adresse, vider la playlist).
+
+Développée et testée avec un vrai VLC 3.0.20 sous Linux, sans installation
+Gladys autour : vos retours sont les bienvenus, surtout sous Windows et macOS.
+
+**Pourquoi l'interface web et pas telnet ?** VLC a deux interfaces de
+commande à distance. L'interface web répond en JSON avec tout à la fois :
+état, volume, position, durée, et les tags de l'élément en cours, y compris
+le morceau d'une radio web (`now_playing`) et sa pochette. L'interface telnet
+(celle qu'utilise Home Assistant) répond du texte fait pour un humain, en
+partie traduit dans la langue de VLC, sur une connexion à garder ouverte. Les
+deux demandent un mot de passe ; les deux existent sur tout VLC 3.
+
+## Prérequis
+
+- Gladys Assistant 5.1 ou plus récent.
+- VLC 3.0 ou plus récent, avec son interface web activée et un mot de passe
+  (VLC refuse de la lancer sans).
+- L'ordinateur de VLC joignable depuis le serveur Gladys sur le port de
+  l'interface web (8080 sauf changement) : autorisez VLC dans le pare-feu quand
+  le système le demande.
+
+### Activer l'interface web de VLC
+
+**Depuis la fenêtre de VLC (Windows, Linux) :**
+
+1. **Outils → Préférences**, puis en bas à gauche **Afficher les paramètres :
+   Tous**.
+2. **Interface → Interfaces principales** : cochez **Web**.
+3. **Interface → Interfaces principales → Lua** : saisissez un mot de passe
+   dans **Lua HTTP → Mot de passe**.
+4. **Enregistrer**, puis quittez et relancez VLC.
+
+**Sous macOS :** **VLC → Réglages** (ou Préférences), **Tout afficher**, puis
+les trois mêmes étapes : **Interface → Interfaces principales**, cochez
+**Web** ; **Interfaces principales → Lua**, le mot de passe ; enregistrez et
+relancez VLC.
+
+**En ligne de commande** (un Raspberry Pi ou un serveur sans écran, ou pour
+garder aussi la fenêtre) :
+
+```sh
+# Avec la fenêtre de VLC
+vlc --extraintf http --http-password 'votre-mot-de-passe'
+# Sans fenêtre (Linux, Raspberry Pi)
+cvlc --intf http --http-password 'votre-mot-de-passe'
+# Un autre port
+cvlc --intf http --http-port 9090 --http-password 'votre-mot-de-passe'
+```
+
+Sous Windows : `"C:\Program Files\VideoLAN\VLC\vlc.exe" --extraintf http
+--http-password votre-mot-de-passe`. Sous macOS :
+`/Applications/VLC.app/Contents/MacOS/VLC --extraintf http --http-password
+votre-mot-de-passe`.
+
+Vérifiez depuis le navigateur d'un autre ordinateur : `http://<adresse>:8080`
+demande un mot de passe (laissez le nom d'utilisateur vide) et affiche la
+télécommande web de VLC.
 
 ## Configuration
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+Dans **Intégrations → VLC → Configuration** :
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+- **Adresse de VLC** : l'adresse IP de l'ordinateur qui fait tourner VLC, par
+  exemple `192.168.1.20`. Ajoutez `:port` si l'interface web n'utilise pas
+  8080 (`192.168.1.20:9090`). Un nom d'hôte marche aussi. Ne mettez ni
+  `localhost` ni `127.0.0.1`, même si VLC tourne sur le serveur Gladys :
+  l'intégration tourne dans son propre conteneur, donnez l'adresse réseau de
+  l'ordinateur.
+- **Mot de passe** : le mot de passe Lua HTTP choisi dans VLC.
+- **VLC 2** et **VLC 3** : deux autres VLC, facultatifs, configurés de la même
+  façon.
+- **Langue** : la langue des noms de fonctionnalités et des textes écrits par
+  l'intégration (français par défaut). Les noms des fonctionnalités sont fixés
+  à l'ajout de l'appareil.
 
-## Actions
+Cliquez sur **Enregistrer**, puis sur **Tester la connexion** : chaque VLC
+répond avec sa version et ce qu'il fait. Enfin, dans l'onglet **Découverte**,
+ajoutez chaque VLC : son appareil s'appelle `VLC (<adresse>)`, renommez-le à
+votre goût.
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+## Appareils
 
-## Scènes
+Chaque VLC est un appareil avec ces fonctionnalités :
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+| Fonctionnalité     | Ce qu'elle montre ou fait                                      |
+| ------------------ | -------------------------------------------------------------- |
+| En lecture         | 1 quand VLC joue, 0 sinon (pause, arrêt, fermé)                |
+| État de la lecture | En lecture, En pause, Arrêté, ou Éteint ou injoignable         |
+| Titre              | Le titre de l'élément ; pour une radio web, le morceau annoncé |
+| Artiste            | L'artiste ; pour une radio web qui n'en donne pas, la station  |
+| Album              | L'album (— s'il est inconnu)                                   |
+| Progression        | Le pourcentage lu (0 pour un flux en direct)                   |
+| Temps restant      | Les minutes restantes (0 pour un flux en direct)               |
+| Volume             | Un curseur, de 0 à 100 %                                       |
+| Lire               | Reprend un élément en pause, ou démarre la playlist            |
+| Pause              | Met en pause (rien ne se passe si rien ne joue)                |
+| Stop               | Arrête                                                         |
+| Précédent, Suivant | Avance ou recule dans la playlist                              |
+| Sourdine           | Coupe le son, ou le rétablit                                   |
+| Notification       | Utilisée par l'action de scène **Parler sur une enceinte**     |
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+**Volume** : le curseur de VLC monte jusqu'à 125 % (et plus depuis
+l'interface web). Gladys affiche 100 % au-delà, et son curseur règle de 0 à
+100 %.
 
-## Tableau de bord
+**Sourdine** : l'interface web de VLC ne donne ni ne règle sa sourdine. Le
+bouton Sourdine met le volume à 0 en retenant le précédent ; pressé de
+nouveau, il le rétablit (50 % s'il a été perdu). Un VLC à 0 % apparaît coupé.
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+**Annonces** : l'action de scène **Parler sur une enceinte** du cœur
+(synthèse vocale, elle demande Gladys Plus) envoie l'adresse d'un MP3 à la
+fonctionnalité Notification. VLC la joue aussitôt, au volume courant (le cœur
+ne transmet pas son volume aux intégrations : placez avant elle une action
+**Contrôler un appareil** sur la fonctionnalité Volume). À la fin,
+l'intégration la retire de la playlist et, si VLC jouait, relance ce qui
+jouait : un fichier là où il en était, une radio web en direct. Les
+déclencheurs de scène restent muets pendant ce temps. VLC doit pouvoir joindre
+l'adresse du MP3 (Gladys Plus, ou votre serveur Gladys).
+
+**Rafraîchissement** : VLC ne pousse rien, l'intégration le lit. Toutes les
+3 secondes quand quelque chose joue, toutes les 5 secondes à l'arrêt, toutes
+les minutes pour un VLC pas encore ajouté à Gladys, et toutes les 30 secondes
+quand VLC est fermé ou injoignable : des requêtes locales auxquelles VLC
+répond en quelques millisecondes, sans quota. Une seule réponse manquée est
+ignorée ; après deux, VLC est « Éteint ou injoignable ».
+
+## Widget du tableau de bord
+
+Ajoutez le widget **Lecteur VLC** (un widget d'intégration externe) et
+choisissez un VLC. Il affiche :
+
+- la pochette de l'élément quand VLC en a une (sinon la jauge de
+  progression) ;
+- le titre, puis l'artiste, l'album et le nom du VLC ;
+- l'état, la position (`1:23 / 3:20`) et le volume ;
+- quatre boutons : lecture/pause, suivant, volume moins et volume plus (pas de
+  5 %).
+
+Le widget **Musique** du cœur fonctionne aussi avec chaque VLC :
+lecture/pause, précédent, suivant et le curseur de volume.
+
+## Déclencheurs de scène
+
+Chaque déclencheur peut se limiter à un VLC (vide : n'importe lequel), et
+transmet à la scène le **nom du VLC**, le **titre**, l'**artiste** et
+l'**album**.
+
+- **Lecture démarrée** : VLC commence une lecture : un fichier, une radio web,
+  l'élément suivant de la playlist. Une radio web qui annonce son morceau
+  suivant n'est pas un nouveau démarrage.
+- **Lecture en pause** : la lecture de VLC est mise en pause.
+- **Lecture reprise** : l'élément en pause reprend.
+- **Lecture arrêtée** : plus rien ne joue : arrêt, fin de la playlist ou VLC
+  fermé. Le titre est celui qui s'est arrêté.
+
+La première lecture après un redémarrage de Gladys ou de l'intégration ne
+déclenche rien.
+
+## Actions de scène
+
+- **Lire une adresse dans VLC** : une radio web, un flux ou un fichier.
+  L'adresse est une URL `http(s)`, `rtsp`, `rtp`, `udp`, `mms`, `ftp`, `smb` ou
+  `file`, ou un chemin complet sur l'ordinateur de VLC
+  (`/home/moi/Musique/morceau.mp3`, `C:\Users\moi\Music\morceau.mp3`).
+  **Comment** : ajouter à la playlist et lire tout de suite (par défaut),
+  remplacer la playlist et lire, ou ajouter à la fin de la playlist.
+  **Volume** : facultatif, de 0 à 100 %. Les commandes propres à VLC
+  (`vlc://quit`), l'écran et les périphériques de capture sont refusés.
+- **Vider la playlist de VLC** : arrête la lecture et retire tous les éléments.
+
+Lire, mettre en pause, le volume et les autres boutons sont dans l'action
+**Contrôler un appareil** du cœur, sur les fonctionnalités de l'appareil.
+
+## Exemples de scènes
+
+- **Réveil en radio** : à 7 h en semaine, **Lire une adresse dans VLC** avec
+  l'adresse de votre radio, volume 20 % ; dix minutes plus tard, une action
+  **Contrôler un appareil** monte le Volume à 40 %.
+- **Soirée film** : déclencheur **Lecture démarrée** sur le VLC du salon, puis
+  baisser les lumières ; **Lecture en pause** les remonte un peu ; **Lecture
+  arrêtée** les rallume.
+- **Sonnette** : quand on sonne, **Contrôler un appareil** sur le bouton Pause
+  du VLC, puis **Parler sur une enceinte** « Quelqu'un sonne à la porte » ;
+  la musique reprend après l'annonce.
+- **Départ de la maison** : quand tout le monde part, **Vider la playlist de
+  VLC**.
+
+Ne lancez pas une lecture depuis un déclencheur **Lecture démarrée** sur le
+même VLC : la scène se relancerait elle-même.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **« Pas de réponse (fermé, ou interface web désactivée) »** : VLC est
+  fermé, son interface web n'est pas activée, ou un pare-feu bloque le port.
+  Ouvrez `http://<adresse>:8080` depuis un autre ordinateur pour vérifier.
+- **« Mot de passe refusé »** : ressaisissez le mot de passe Lua HTTP aux deux
+  endroits. Le nom d'utilisateur reste vide dans un navigateur.
+- **« Indiquez l'adresse réseau de l'ordinateur, pas localhost »** : saisissez
+  l'adresse IP de l'ordinateur qui fait tourner VLC.
+- **« Cette adresse ne répond pas comme VLC »** : un autre programme utilise ce
+  port (une box, un autre serveur web) : vérifiez le port de l'interface web
+  de VLC.
+- **Le titre affiche un nom de fichier** : le fichier n'a pas de tags ; VLC
+  montre son nom.
+- **La pochette ne s'affiche pas** : VLC n'a que la pochette du fichier ou
+  celle qu'il a trouvée lui-même ; une radio web n'en a souvent pas.
+- **Détails** : réglez `LOG_LEVEL=debug` sur l'intégration pour voir chaque
+  lecture.
+
+## Limites
+
+- Pas de recherche sur le réseau : l'interface web de VLC ne s'annonce par
+  aucun protocole que Gladys sait parcourir. Saisissez l'adresse.
+- Jusqu'à trois VLC.
+- Pas de vraie sourdine (voir Appareils), pas de déplacement dans un média, ni
+  aléatoire ni répétition depuis Gladys.
+- L'état est lu toutes les 3 à 5 secondes : une pause et une reprise dans la
+  même seconde peuvent passer inaperçues.
+- VLC 4 n'est pas encore sorti : son interface web pourrait changer.
+- Testée sur VLC 3.0.20 pour Linux (lecture de fichiers, d'une radio web,
+  d'une annonce, pochette, volume, mauvais mot de passe, VLC fermé puis
+  revenu), pas sous Windows, macOS ni Android : vos retours sont les
+  bienvenus.

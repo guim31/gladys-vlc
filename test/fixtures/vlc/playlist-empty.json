@@ -1,0 +1,22 @@
+{
+  "type": "node",
+  "ro": "rw",
+  "name": "",
+  "id": "0",
+  "children": [
+    {
+      "type": "node",
+      "ro": "ro",
+      "name": "Playlist",
+      "id": "1",
+      "children": []
+    },
+    {
+      "type": "node",
+      "ro": "ro",
+      "name": "Media Library",
+      "id": "2",
+      "children": []
+    }
+  ]
+}

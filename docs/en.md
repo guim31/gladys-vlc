@@ -1,61 +1,230 @@
-# Demo Devices Template
+# VLC
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+Control [VLC media player](https://www.videolan.org/vlc/) from Gladys: on a
+computer, a Raspberry Pi or a server, follow what it plays, drive the playback
+and the volume, play a web radio or a file from a scene, and make Gladys
+announcements heard on its speakers.
 
-## What you get
+This integration is not affiliated with VideoLAN. VLC is a trademark of
+VideoLAN.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+## Presentation
+
+The integration talks to VLC through its **web interface** (the Lua HTTP
+interface, port 8080), on your local network only: no cloud, no account.
+
+- **One device per VLC** (up to three): state, title, artist, album, progress,
+  time left, volume, and the play, pause, stop, previous, next and mute
+  buttons.
+- The core's **Music** dashboard box works with it (play/pause, previous, next,
+  volume).
+- **Announcements**: the core's **Talk on a speaker** scene action plays on
+  VLC, then what was playing comes back.
+- A **VLC player** dashboard widget, four **scene triggers** (playback
+  started, paused, resumed, stopped) and two **scene actions** (play an
+  address, empty the playlist).
+
+Developed and tested against a real VLC 3.0.20 on Linux, without Gladys
+hardware around it: feedback welcome, especially on Windows and macOS.
+
+**Why the web interface and not telnet?** VLC has two remote interfaces. The
+web interface answers JSON with everything at once: state, volume, position,
+length, and the tags of the current item, including the song of a web radio
+(`now_playing`) and its artwork. The telnet interface (the one Home Assistant
+uses) answers text meant for humans, partly translated into VLC's language,
+over a connection that must be kept open. Both need a password; both are
+available on every VLC 3.
+
+## Requirements
+
+- Gladys Assistant 5.1 or later.
+- VLC 3.0 or later, with its web interface turned on and a password set (VLC
+  refuses to start it without one).
+- The computer running VLC reachable from the Gladys server on the port of the
+  web interface (8080 unless changed): allow VLC in its firewall when the
+  system asks.
+
+### Turn on VLC's web interface
+
+**From VLC's window (Windows, Linux):**
+
+1. **Tools → Preferences**, then at the bottom left **Show settings: All**.
+2. **Interface → Main interfaces**: tick **Web**.
+3. **Interface → Main interfaces → Lua**: type a password in **Lua HTTP →
+   Password**.
+4. **Save**, then quit and restart VLC.
+
+**On macOS:** **VLC → Settings** (or Preferences), **Show All**, then the
+same three steps: **Interface → Main interfaces**, tick **Web**; **Main
+interfaces → Lua**, set the password; save and restart VLC.
+
+**From the command line** (a Raspberry Pi or a server without a screen, or to
+keep the window too):
+
+```sh
+# With VLC's window
+vlc --extraintf http --http-password 'your-password'
+# Without a window (Linux, Raspberry Pi)
+cvlc --intf http --http-password 'your-password'
+# Another port
+cvlc --intf http --http-port 9090 --http-password 'your-password'
+```
+
+On Windows: `"C:\Program Files\VideoLAN\VLC\vlc.exe" --extraintf http
+--http-password your-password`. On macOS:
+`/Applications/VLC.app/Contents/MacOS/VLC --extraintf http --http-password
+your-password`.
+
+Check it from a browser on another computer: `http://<address>:8080` asks for
+a password (leave the user name empty) and shows VLC's web remote.
 
 ## Configuration
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+In **Integrations → VLC → Configuration**:
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+- **VLC address**: the IP address of the computer running VLC, e.g.
+  `192.168.1.20`. Add `:port` if the web interface does not use 8080
+  (`192.168.1.20:9090`). A host name works too. Do not type `localhost` or
+  `127.0.0.1`, even when VLC runs on the Gladys server: the integration runs
+  in its own container, give the network address of the computer.
+- **Password**: the Lua HTTP password set in VLC.
+- **VLC 2** and **VLC 3**: two more VLC, optional, set up the same way.
+- **Language**: the language of the feature names and of the texts the
+  integration writes (French by default). The feature names are fixed when a
+  device is added.
 
-## Actions
+Click **Save**, then **Test the connection**: each VLC answers with its
+version and what it does. Finally, in the **Discover** tab, add each VLC: its
+device is named `VLC (<address>)`, rename it as you like.
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+## Devices
 
-## Scenes
+Each VLC is a device with these features:
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+| Feature        | What it shows or does                                            |
+| -------------- | ---------------------------------------------------------------- |
+| Playing        | 1 while VLC plays, 0 otherwise (paused, stopped, closed)         |
+| Playback state | Playing, Paused, Stopped, or Off or unreachable                  |
+| Title          | The title of the item; for a web radio, the song it announces    |
+| Artist         | The artist; for a web radio without one, the name of the station |
+| Album          | The album (— when unknown)                                       |
+| Progress       | The percentage played (0 for a live stream)                      |
+| Time left      | The minutes left (0 for a live stream)                           |
+| Volume         | A slider, 0 to 100 %                                             |
+| Play           | Resumes a paused item, or starts the playlist                    |
+| Pause          | Pauses (nothing happens when nothing plays)                      |
+| Stop           | Stops                                                            |
+| Previous, Next | Moves in the playlist                                            |
+| Mute           | Mutes, or brings the volume back                                 |
+| Notification   | Used by the core's **Talk on a speaker** scene action            |
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+**Volume**: VLC's own slider goes up to 125 % (and beyond from the web
+interface). Gladys shows 100 % for anything above, and the slider sets 0 to
+100 %.
 
-## Dashboard
+**Mute**: VLC's web interface neither tells nor sets its mute. The Mute button
+sets the volume to 0 and remembers the one before; pressed again, it brings it
+back (50 % if it was lost). A VLC at 0 % shows as muted.
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+**Announcements**: the **Talk on a speaker** scene action of the core
+(text-to-speech, it needs Gladys Plus) sends the address of an MP3 to the
+Notification feature. VLC plays it at once, at the current volume (the core
+does not give its volume to integrations: put a **Set device value** action on
+the Volume feature before it). When it ends, the integration removes it from
+the playlist and, if VLC was playing, plays it again: a file where it was, a
+web radio from now. The scene triggers stay quiet meanwhile. VLC must reach
+the address of the MP3 (Gladys Plus, or your Gladys server).
+
+**Refresh**: VLC pushes nothing, the integration reads it. Every 3 seconds
+while something plays, every 5 seconds when stopped, every minute for a VLC
+not added to Gladys yet, and every 30 seconds when VLC is closed or
+unreachable — local requests that VLC answers in a few milliseconds, with no
+quota. A single missed answer is ignored; after two, VLC is "Off or
+unreachable".
+
+## Dashboard widget
+
+Add the **VLC player** widget (an external integration widget) and choose a
+VLC. It shows:
+
+- the artwork of the item when VLC has one (the progress gauge otherwise);
+- the title, then the artist, the album and the VLC name;
+- the state, the position (`1:23 / 3:20`) and the volume;
+- four buttons: play/pause, next, volume down and volume up (5 % steps).
+
+The core's **Music** box also works with each VLC: play/pause, previous, next
+and the volume slider.
+
+## Scene triggers
+
+Each trigger can be limited to one VLC (empty: any VLC), and gives the scene
+the **VLC name**, the **title**, the **artist** and the **album**.
+
+- **Playback started**: VLC starts playing something: a file, a web radio, the
+  next item of the playlist. A web radio announcing its next song is not a new
+  start.
+- **Playback paused**: what VLC plays is paused.
+- **Playback resumed**: the paused item plays again.
+- **Playback stopped**: nothing plays anymore: stopped, end of the playlist,
+  or VLC closed. The title is the one that stopped.
+
+The first read after Gladys or the integration restarts fires nothing.
+
+## Scene actions
+
+- **Play an address in VLC**: a web radio, a stream or a file. The address is
+  an `http(s)`, `rtsp`, `rtp`, `udp`, `mms`, `ftp`, `smb` or `file` URL, or a
+  full path on the computer running VLC (`/home/me/Music/song.mp3`,
+  `C:\Users\me\Music\song.mp3`). **How**: add to the playlist and play now
+  (default), replace the playlist and play, or add at the end of the playlist.
+  **Volume**: optional, 0 to 100 %. VLC's own commands (`vlc://quit`), the
+  screen and the capture devices are refused.
+- **Empty the VLC playlist**: stops the playback and removes every item.
+
+Playing, pausing, the volume and the other buttons are in the core's
+**Set device value** action, on the device features.
+
+## Scene examples
+
+- **Wake up with the radio**: at 7:00 on weekdays, **Play an address in VLC**
+  with the address of your radio, volume 20 %; ten minutes later, a **Set device
+  value** action sets the Volume to 40 %.
+- **Movie night**: trigger **Playback started** on the living-room VLC, then
+  dim the lights; **Playback paused** turns them up a little;
+  **Playback stopped** turns them back on.
+- **Doorbell**: when the doorbell rings, **Set device value** on the Pause
+  button of the VLC, then **Talk on a speaker** "Someone is at the door";
+  the music comes back after the announcement.
+- **Leaving home**: when everyone leaves, **Empty the VLC playlist**.
+
+Do not start a playback from a **Playback started** trigger on the same VLC:
+the scene would start itself again.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **"No answer (closed, or web interface off)"**: VLC is closed, its web
+  interface is off, or a firewall blocks the port. Open
+  `http://<address>:8080` from another computer to check.
+- **"Password refused"**: retype the Lua HTTP password in both places. The
+  user name stays empty in a browser.
+- **"Use the network address of the computer, not localhost"**: type the IP
+  address of the computer running VLC.
+- **"This address does not answer like VLC"**: another program uses that port
+  (a router, another web server): check the port of VLC's web interface.
+- **The title shows a file name**: the file has no tags; VLC shows its name.
+- **The artwork does not show**: VLC only has the artwork the file carries or
+  the one it found itself; a web radio usually has none.
+- **Details**: set `LOG_LEVEL=debug` on the integration to see every read.
+
+## Limits
+
+- No discovery on the network: VLC's web interface announces itself on no
+  protocol Gladys can browse. Type the address.
+- Up to three VLC.
+- No real mute (see Devices), no seek, no shuffle or repeat from Gladys.
+- The state is read every 3 to 5 seconds: a pause and a resume in the same
+  second may go unseen.
+- VLC 4 is not released yet: its web interface may change.
+- Tested on VLC 3.0.20 for Linux (playback of files, of a web radio, of an
+  announcement, artwork, volume, wrong password, VLC closed and back), not on
+  Windows, macOS or Android: feedback welcome.

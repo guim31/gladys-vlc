@@ -1,41 +1,47 @@
 // -----------------------------------------------------------------------------
-// Scene actions (SDK v0.14+, Gladys 5.1+).
+// Scene action handlers (manifest `scene_actions`, Gladys 5.1+).
 //
-// A scene action is an OPERATION a scene author places in a scene, with
-// parameters and a result: "identify this device", "take a snapshot", "clean
-// these rooms". Each one is declared in the manifest `scene_actions` field
-// (key, label, `fields` in the config_schema grammar, scalar `outputs`) and
-// handled here, keyed by that same `key`; index.js registers every entry with
-// `gladys.onSceneAction(key, ...)`.
+// An unreachable VLC, an unknown device or an address that is not a media
+// throws: the action fails, the scene continues and logs it.
 //
-// Scene TRIGGERS are the other direction ("this happened"): they are fired by
-// the device that observes the event, see src/devices/motionSensor.js.
+// The playback controls (play, pause, next, volume...) are not repeated here:
+// they are device features, reachable from the core's "Control a device"
+// action. These two are what a device feature cannot carry: an address to
+// play, and the playlist as a whole.
 //
-// The rules that matter:
-//   - `fields` arrive RESOLVED: scene variables substituted, defaults applied,
-//     validated by the core; a `"source": "devices"` field is the chosen
-//     device external_id;
-//   - resolve an object of the declared `outputs` (scalars only), readable by
-//     the following actions of the scene, or `undefined` for none. Keys not
-//     declared in the manifest are dropped by the core;
-//   - throwing fails THIS action only: the scene logs it and continues. A
-//     scene action is never a condition: return an output and let the scene
-//     author gate on it;
-//   - never fire a scene event as a consequence of a received action: a scene
-//     bound to that event would loop through the integration.
+// The triggers (`playback_started`...) are fired from what VLC reports,
+// whatever started the playback: `play_url` is followed by `playback_started`
+// like a play from VLC's window. A scene that reacts to `playback_started` by
+// starting a playback would loop: the documentation says so.
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
-import { signalDevice } from './devices/index.js';
 
-const logger = createLogger({ name: 'scenes' });
+const logger = createLogger({ name: 'vlc-scenes' });
+
+// `play`: add at the end of the playlist and play it now; `replace`: empty the
+// playlist first; `enqueue`: add at the end, play nothing.
+export const PLAY_MODES = ['play', 'replace', 'enqueue'];
+export const DEFAULT_PLAY_MODE = 'play';
+
+function number(value) {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+  return typeof value === 'string' ? Number(value.replace(',', '.')) : value;
+}
 
 export const SCENE_ACTIONS = {
-  // The ack is awaited under the action's `timeout_seconds` (15 s in the
-  // manifest), counted from the moment the scene reaches the action.
-  async identify_device(gladys, { fields, config }) {
-    logger.info(`Scene action identify_device <- ${fields.device}`);
-    const signalled = await signalDevice(gladys, fields.device, config);
-    return { signalled };
+  async play_url(hub, { fields }) {
+    const mrl = hub.checkMrl(fields.url);
+    const mode = PLAY_MODES.includes(fields.mode) ? fields.mode : DEFAULT_PLAY_MODE;
+    const wanted = number(fields.volume);
+    const volume = wanted === null ? null : hub.checkVolume(wanted);
+    await hub.playMrl(fields.device, { mrl, mode, volume });
+  },
+
+  async clear_playlist(hub, { fields }) {
+    await hub.run(fields.device, (vlc) => vlc.clearPlaylist());
+    logger.info(`Playlist emptied on ${fields.device}`);
   },
 };

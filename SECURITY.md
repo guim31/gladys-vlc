@@ -30,6 +30,23 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+What the integration holds and where:
+
+- **Secrets**: the password of each VLC's web interface, typed in the Gladys
+  configuration (`secret` fields). It is only sent to the address typed for
+  that VLC, as HTTP Basic authentication, never in a URL, never written to
+  `/data`, never logged.
+- **`/data`**: `vlc-state.json`, the volume each VLC had before a mute. No
+  secret.
+- **Network**: plain HTTP (or HTTPS if typed) requests from the integration's
+  container to the addresses typed in the configuration, on the local
+  network. Redirects are not followed. Nothing is sent to the internet by the
+  integration itself; VLC may fetch the addresses a scene asks it to play,
+  restricted to media schemes (no `vlc://` command, no screen or capture
+  device).
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+VLC media player and its web interface (report those to
+[VideoLAN](https://www.videolan.org/security/)), and the third-party services
+and devices the integration talks to.

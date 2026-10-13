@@ -1,147 +1,553 @@
 {
   "manifest_version": 1,
   "type": "device",
-  "name": "Demo Devices Template",
+  "name": "VLC",
   "description": {
-    "en": "Starter template showing sensors, a switch, a dimmable light and a smart plug.",
-    "fr": "Template de démarrage : capteurs, interrupteur, lampe variable et prise connectée."
+    "en": "Control VLC media player: playback, volume, now playing, web radios, announcements, scenes.",
+    "fr": "Pilotez VLC : lecture, volume, titre en cours, radios web, annonces et scènes.",
+    "de": "Steuere VLC: Wiedergabe, Lautstärke, aktueller Titel, Webradios, Ansagen und Szenen.",
+    "es": "Controle VLC: reproducción, volumen, título actual, radios web, avisos y escenas."
   },
   "version": "1.0.0",
-  "docker_image": "ghcr.io/gladysassistant/integration-template-js:1.0.0",
+  "docker_image": "ghcr.io/guim31/gladys-vlc:1.0.0",
   "gladys_version": ">=5.1.0",
-  "cover_image": "https://raw.githubusercontent.com/GladysAssistant/integration-template-js/master/cover.png",
-  "categories": ["lighting", "security", "environment"],
-  "transports": ["local", "cloud"],
+  "cover_image": "https://raw.githubusercontent.com/guim31/gladys-vlc/main/cover.png",
+  "categories": ["multimedia"],
+  "transports": ["local"],
   "config_schema": [
     {
       "key": "intro",
       "type": "section",
-      "label": { "en": "Getting started", "fr": "Pour commencer" },
+      "label": {
+        "en": "Connect your VLC",
+        "fr": "Connecter votre VLC",
+        "de": "Verbinde dein VLC",
+        "es": "Conecte su VLC"
+      },
       "description": {
-        "en": "The demo weather station reads real data from the free Open-Meteo API: pick the coordinates to observe. No account, no API key.",
-        "fr": "La station météo de démonstration lit de vraies données via l'API gratuite Open-Meteo : choisissez les coordonnées à observer. Pas de compte, pas de clé d'API."
+        "en": "Turn on VLC's web interface: in VLC, Tools > Preferences, Show settings: All, Interface > Main interfaces, tick Web; then Main interfaces > Lua, set a Lua HTTP password, and restart VLC. Or start it with --extraintf http --http-password <password>. Type below the address of the computer running VLC (port 8080 unless changed) and that password. Up to three VLC.",
+        "fr": "Activez l'interface web de VLC : dans VLC, Outils > Préférences, Afficher les paramètres : Tous, Interface > Interfaces principales, cochez Web ; puis Interfaces principales > Lua, choisissez un mot de passe Lua HTTP, et redémarrez VLC. Ou lancez-le avec --extraintf http --http-password <mot de passe>. Saisissez ci-dessous l'adresse de l'ordinateur qui fait tourner VLC (port 8080 sauf changement) et ce mot de passe. Jusqu'à trois VLC.",
+        "de": "Aktiviere die Weboberfläche von VLC: in VLC Werkzeuge > Einstellungen, Einstellungen zeigen: Alle, Interface > Hauptinterfaces, Web ankreuzen; dann Hauptinterfaces > Lua ein Lua-HTTP-Passwort festlegen und VLC neu starten. Oder starte es mit --extraintf http --http-password <Passwort>. Gib unten die Adresse des Computers ein, auf dem VLC läuft (Port 8080, falls nicht geändert), und dieses Passwort. Bis zu drei VLC.",
+        "es": "Active la interfaz web de VLC: en VLC, Herramientas > Preferencias, Mostrar ajustes: Todo, Interfaz > Interfaces principales, marque Web; después Interfaces principales > Lua, elija una contraseña Lua HTTP y reinicie VLC. O inícielo con --extraintf http --http-password <contraseña>. Introduzca abajo la dirección del equipo que ejecuta VLC (puerto 8080 salvo cambio) y esa contraseña. Hasta tres VLC."
       },
       "links": [
         {
-          "url": "https://open-meteo.com/en/docs",
-          "label": { "en": "Open-Meteo documentation", "fr": "Documentation Open-Meteo" }
+          "url": "https://wiki.videolan.org/Documentation:Modules/http_intf/",
+          "label": {
+            "en": "VLC: the web interface",
+            "fr": "VLC : l'interface web",
+            "de": "VLC: die Weboberfläche",
+            "es": "VLC: la interfaz web"
+          }
         }
       ]
     },
     {
-      "key": "latitude",
-      "type": "number",
-      "label": { "en": "Latitude", "fr": "Latitude" },
-      "description": {
-        "en": "Latitude used for the demo weather sensor.",
-        "fr": "Latitude utilisée par le capteur météo de démonstration."
+      "key": "host_1",
+      "type": "string",
+      "label": {
+        "en": "VLC address",
+        "fr": "Adresse de VLC",
+        "de": "VLC-Adresse",
+        "es": "Dirección de VLC"
       },
-      "placeholder": { "en": "e.g. 48.8566", "fr": "ex. 48.8566" },
-      "required": true,
-      "default": 48.8566,
-      "min": -90,
-      "max": 90
+      "placeholder": {
+        "en": "e.g. 192.168.1.20",
+        "fr": "ex. 192.168.1.20",
+        "de": "z. B. 192.168.1.20",
+        "es": "p. ej. 192.168.1.20"
+      },
+      "required": false,
+      "default": "",
+      "description": {
+        "en": "IP address of the computer running VLC. Add :port if its web interface does not use 8080.",
+        "fr": "Adresse IP de l'ordinateur qui fait tourner VLC. Ajoutez :port si son interface web n'utilise pas 8080.",
+        "de": "IP-Adresse des Computers, auf dem VLC läuft. Ergänze :Port, wenn seine Weboberfläche nicht 8080 nutzt.",
+        "es": "Dirección IP del equipo que ejecuta VLC. Añada :puerto si su interfaz web no usa el 8080."
+      }
     },
     {
-      "key": "longitude",
-      "type": "number",
-      "label": { "en": "Longitude", "fr": "Longitude" },
-      "description": {
-        "en": "Longitude used for the demo weather sensor.",
-        "fr": "Longitude utilisée par le capteur météo de démonstration."
+      "key": "password_1",
+      "type": "secret",
+      "label": {
+        "en": "Password",
+        "fr": "Mot de passe",
+        "de": "Passwort",
+        "es": "Contraseña"
       },
-      "placeholder": { "en": "e.g. 2.3522", "fr": "ex. 2.3522" },
-      "required": true,
-      "default": 2.3522,
-      "min": -180,
-      "max": 180
+      "required": false,
+      "description": {
+        "en": "The Lua HTTP password set in VLC (VLC refuses to start its web interface without one).",
+        "fr": "Le mot de passe Lua HTTP choisi dans VLC (VLC refuse de lancer son interface web sans).",
+        "de": "Das in VLC festgelegte Lua-HTTP-Passwort (ohne startet VLC seine Weboberfläche nicht).",
+        "es": "La contraseña Lua HTTP elegida en VLC (VLC no inicia su interfaz web sin ella)."
+      }
     },
     {
-      "key": "unit",
+      "key": "section_2",
+      "type": "section",
+      "label": {
+        "en": "VLC 2 (optional)",
+        "fr": "VLC 2 (facultatif)",
+        "de": "VLC 2 (optional)",
+        "es": "VLC 2 (opcional)"
+      },
+      "description": {
+        "en": "Another VLC, set up the same way.",
+        "fr": "Un autre VLC, configuré de la même façon.",
+        "de": "Ein weiteres VLC, genauso eingerichtet.",
+        "es": "Otro VLC, configurado de la misma manera."
+      }
+    },
+    {
+      "key": "host_2",
+      "type": "string",
+      "label": {
+        "en": "VLC address 2",
+        "fr": "Adresse de VLC 2",
+        "de": "VLC-Adresse 2",
+        "es": "Dirección de VLC 2"
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.20",
+        "fr": "ex. 192.168.1.20",
+        "de": "z. B. 192.168.1.20",
+        "es": "p. ej. 192.168.1.20"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "password_2",
+      "type": "secret",
+      "label": {
+        "en": "Password 2",
+        "fr": "Mot de passe 2",
+        "de": "Passwort 2",
+        "es": "Contraseña 2"
+      },
+      "required": false
+    },
+    {
+      "key": "section_3",
+      "type": "section",
+      "label": {
+        "en": "VLC 3 (optional)",
+        "fr": "VLC 3 (facultatif)",
+        "de": "VLC 3 (optional)",
+        "es": "VLC 3 (opcional)"
+      },
+      "description": {
+        "en": "Another VLC, set up the same way.",
+        "fr": "Un autre VLC, configuré de la même façon.",
+        "de": "Ein weiteres VLC, genauso eingerichtet.",
+        "es": "Otro VLC, configurado de la misma manera."
+      }
+    },
+    {
+      "key": "host_3",
+      "type": "string",
+      "label": {
+        "en": "VLC address 3",
+        "fr": "Adresse de VLC 3",
+        "de": "VLC-Adresse 3",
+        "es": "Dirección de VLC 3"
+      },
+      "placeholder": {
+        "en": "e.g. 192.168.1.20",
+        "fr": "ex. 192.168.1.20",
+        "de": "z. B. 192.168.1.20",
+        "es": "p. ej. 192.168.1.20"
+      },
+      "required": false,
+      "default": ""
+    },
+    {
+      "key": "password_3",
+      "type": "secret",
+      "label": {
+        "en": "Password 3",
+        "fr": "Mot de passe 3",
+        "de": "Passwort 3",
+        "es": "Contraseña 3"
+      },
+      "required": false
+    },
+    {
+      "key": "section_options",
+      "type": "section",
+      "label": {
+        "en": "Options",
+        "fr": "Options",
+        "de": "Optionen",
+        "es": "Opciones"
+      },
+      "description": {
+        "en": "Language of the names and texts the integration creates (feature names are set when a device is added).",
+        "fr": "Langue des noms et textes créés par l'intégration (les noms des fonctionnalités sont fixés à l'ajout de l'appareil).",
+        "de": "Sprache der Namen und Texte, die die Integration erzeugt (Funktionsnamen werden beim Hinzufügen des Geräts festgelegt).",
+        "es": "Idioma de los nombres y textos que crea la integración (los nombres de las funciones se fijan al añadir el dispositivo)."
+      }
+    },
+    {
+      "key": "language",
       "type": "select",
-      "label": { "en": "Temperature unit", "fr": "Unité de température" },
-      "required": false,
-      "default": "celsius",
-      "options": [
-        { "value": "celsius", "label": { "en": "Celsius", "fr": "Celsius" } },
-        { "value": "fahrenheit", "label": { "en": "Fahrenheit", "fr": "Fahrenheit" } }
-      ]
-    },
-    {
-      "key": "poll_frequency",
-      "type": "number",
-      "label": { "en": "Refresh interval (s)", "fr": "Intervalle de rafraîchissement (s)" },
-      "description": {
-        "en": "How often sensors are polled, in seconds (one minute minimum).",
-        "fr": "Fréquence d'interrogation des capteurs, en secondes (une minute minimum)."
+      "label": {
+        "en": "Language",
+        "fr": "Langue",
+        "de": "Sprache",
+        "es": "Idioma"
       },
       "required": false,
-      "default": 300,
-      "min": 60,
-      "max": 3600
+      "default": "fr",
+      "options": [
+        {
+          "value": "en",
+          "label": {
+            "en": "English",
+            "fr": "Anglais",
+            "de": "Englisch",
+            "es": "Inglés"
+          }
+        },
+        {
+          "value": "fr",
+          "label": {
+            "en": "French",
+            "fr": "Français",
+            "de": "Französisch",
+            "es": "Francés"
+          }
+        },
+        {
+          "value": "de",
+          "label": {
+            "en": "German",
+            "fr": "Allemand",
+            "de": "Deutsch",
+            "es": "Alemán"
+          }
+        },
+        {
+          "value": "es",
+          "label": {
+            "en": "Spanish",
+            "fr": "Espagnol",
+            "de": "Spanisch",
+            "es": "Español"
+          }
+        }
+      ]
     }
   ],
   "actions": [
     {
-      "key": "test_weather",
-      "label": { "en": "Test the weather provider", "fr": "Tester le fournisseur météo" },
+      "key": "test_connection",
+      "label": {
+        "en": "Test the connection",
+        "fr": "Tester la connexion",
+        "de": "Verbindung testen",
+        "es": "Probar la conexión"
+      },
       "timeout_seconds": 30
-    },
-    {
-      "key": "identify",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
-      "fields": [
-        {
-          "key": "device",
-          "type": "select",
-          "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
-          "required": true
-        }
-      ]
     }
   ],
   "scene_triggers": [
     {
-      "key": "motion_detected",
-      "label": { "en": "Motion detected", "fr": "Mouvement détecté" },
+      "key": "playback_started",
+      "label": {
+        "en": "Playback started",
+        "fr": "Lecture démarrée",
+        "de": "Wiedergabe gestartet",
+        "es": "Reproducción iniciada"
+      },
       "description": {
-        "en": "A demo motion sensor saw a person or an animal move.",
-        "fr": "Un détecteur de démonstration a vu bouger une personne ou un animal."
+        "en": "VLC starts playing: a file, a web radio, the next item of the playlist.",
+        "fr": "VLC commence une lecture : un fichier, une radio web, l'élément suivant de la playlist.",
+        "de": "VLC beginnt abzuspielen: eine Datei, ein Webradio, den nächsten Eintrag der Playlist.",
+        "es": "VLC empieza a reproducir: un archivo, una radio web, el siguiente elemento de la lista."
       },
       "fields": [
         {
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Sensor", "fr": "Détecteur" }
-        },
-        {
-          "key": "target",
-          "type": "multi_select",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" },
-          "options": [
-            { "value": "person", "label": { "en": "Person", "fr": "Personne" } },
-            { "value": "animal", "label": { "en": "Animal", "fr": "Animal" } }
-          ]
+          "label": {
+            "en": "VLC",
+            "fr": "VLC",
+            "de": "VLC",
+            "es": "VLC"
+          }
         }
       ],
       "variables": [
         {
-          "key": "target",
+          "key": "vlc",
           "type": "string",
-          "label": { "en": "What moved", "fr": "Ce qui a bougé" }
+          "label": {
+            "en": "VLC name",
+            "fr": "Nom du VLC",
+            "de": "VLC-Name",
+            "es": "Nombre del VLC"
+          }
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "artist",
+          "type": "string",
+          "label": {
+            "en": "Artist",
+            "fr": "Artiste",
+            "de": "Interpret",
+            "es": "Artista"
+          }
+        },
+        {
+          "key": "album",
+          "type": "string",
+          "label": {
+            "en": "Album",
+            "fr": "Album",
+            "de": "Album",
+            "es": "Álbum"
+          }
+        }
+      ]
+    },
+    {
+      "key": "playback_paused",
+      "label": {
+        "en": "Playback paused",
+        "fr": "Lecture en pause",
+        "de": "Wiedergabe pausiert",
+        "es": "Reproducción en pausa"
+      },
+      "description": {
+        "en": "What VLC plays is paused.",
+        "fr": "La lecture de VLC est mise en pause.",
+        "de": "Die Wiedergabe von VLC wird pausiert.",
+        "es": "Lo que reproduce VLC se pone en pausa."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VLC",
+            "fr": "VLC",
+            "de": "VLC",
+            "es": "VLC"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "vlc",
+          "type": "string",
+          "label": {
+            "en": "VLC name",
+            "fr": "Nom du VLC",
+            "de": "VLC-Name",
+            "es": "Nombre del VLC"
+          }
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "artist",
+          "type": "string",
+          "label": {
+            "en": "Artist",
+            "fr": "Artiste",
+            "de": "Interpret",
+            "es": "Artista"
+          }
+        },
+        {
+          "key": "album",
+          "type": "string",
+          "label": {
+            "en": "Album",
+            "fr": "Album",
+            "de": "Album",
+            "es": "Álbum"
+          }
+        }
+      ]
+    },
+    {
+      "key": "playback_resumed",
+      "label": {
+        "en": "Playback resumed",
+        "fr": "Lecture reprise",
+        "de": "Wiedergabe fortgesetzt",
+        "es": "Reproducción reanudada"
+      },
+      "description": {
+        "en": "The paused item plays again.",
+        "fr": "L'élément en pause reprend.",
+        "de": "Der pausierte Eintrag läuft weiter.",
+        "es": "El elemento en pausa se reanuda."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VLC",
+            "fr": "VLC",
+            "de": "VLC",
+            "es": "VLC"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "vlc",
+          "type": "string",
+          "label": {
+            "en": "VLC name",
+            "fr": "Nom du VLC",
+            "de": "VLC-Name",
+            "es": "Nombre del VLC"
+          }
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "artist",
+          "type": "string",
+          "label": {
+            "en": "Artist",
+            "fr": "Artiste",
+            "de": "Interpret",
+            "es": "Artista"
+          }
+        },
+        {
+          "key": "album",
+          "type": "string",
+          "label": {
+            "en": "Album",
+            "fr": "Album",
+            "de": "Album",
+            "es": "Álbum"
+          }
+        }
+      ]
+    },
+    {
+      "key": "playback_stopped",
+      "label": {
+        "en": "Playback stopped",
+        "fr": "Lecture arrêtée",
+        "de": "Wiedergabe gestoppt",
+        "es": "Reproducción detenida"
+      },
+      "description": {
+        "en": "Nothing plays anymore: stopped, end of the playlist, or VLC closed.",
+        "fr": "Plus rien ne joue : arrêt, fin de la playlist ou VLC fermé.",
+        "de": "Nichts läuft mehr: gestoppt, Ende der Playlist oder VLC geschlossen.",
+        "es": "Ya no se reproduce nada: detenido, fin de la lista o VLC cerrado."
+      },
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VLC",
+            "fr": "VLC",
+            "de": "VLC",
+            "es": "VLC"
+          }
+        }
+      ],
+      "variables": [
+        {
+          "key": "vlc",
+          "type": "string",
+          "label": {
+            "en": "VLC name",
+            "fr": "Nom du VLC",
+            "de": "VLC-Name",
+            "es": "Nombre del VLC"
+          }
+        },
+        {
+          "key": "title",
+          "type": "string",
+          "label": {
+            "en": "Title",
+            "fr": "Titre",
+            "de": "Titel",
+            "es": "Título"
+          }
+        },
+        {
+          "key": "artist",
+          "type": "string",
+          "label": {
+            "en": "Artist",
+            "fr": "Artiste",
+            "de": "Interpret",
+            "es": "Artista"
+          }
+        },
+        {
+          "key": "album",
+          "type": "string",
+          "label": {
+            "en": "Album",
+            "fr": "Album",
+            "de": "Album",
+            "es": "Álbum"
+          }
         }
       ]
     }
   ],
   "scene_actions": [
     {
-      "key": "identify_device",
-      "label": { "en": "Identify a device", "fr": "Identifier un appareil" },
+      "key": "play_url",
+      "label": {
+        "en": "Play an address in VLC",
+        "fr": "Lire une adresse dans VLC",
+        "de": "Adresse in VLC abspielen",
+        "es": "Reproducir una dirección en VLC"
+      },
       "description": {
-        "en": "Make a device signal itself (the demo light blinks).",
-        "fr": "Fait se signaler un appareil (la lampe de démonstration clignote)."
+        "en": "Play a web radio, a stream or a file on a VLC, optionally at a given volume.",
+        "fr": "Lit une radio web, un flux ou un fichier sur un VLC, à un volume donné si besoin.",
+        "de": "Spielt ein Webradio, einen Stream oder eine Datei auf einem VLC ab, auf Wunsch mit einer Lautstärke.",
+        "es": "Reproduce una radio web, un flujo o un archivo en un VLC, con un volumen dado si hace falta."
       },
       "timeout_seconds": 15,
       "fields": [
@@ -149,29 +555,161 @@
           "key": "device",
           "type": "select",
           "source": "devices",
-          "label": { "en": "Device", "fr": "Appareil" },
+          "label": {
+            "en": "VLC",
+            "fr": "VLC",
+            "de": "VLC",
+            "es": "VLC"
+          },
           "required": true
-        }
-      ],
-      "outputs": [
+        },
         {
-          "key": "signalled",
-          "type": "boolean",
-          "label": { "en": "Device signalled", "fr": "Appareil signalé" }
+          "key": "url",
+          "type": "string",
+          "required": true,
+          "label": {
+            "en": "Address",
+            "fr": "Adresse",
+            "de": "Adresse",
+            "es": "Dirección"
+          },
+          "placeholder": {
+            "en": "e.g. https://radio.example.com/live.mp3",
+            "fr": "ex. https://radio.example.com/live.mp3",
+            "de": "z. B. https://radio.example.com/live.mp3",
+            "es": "p. ej. https://radio.example.com/live.mp3"
+          },
+          "description": {
+            "en": "An http(s), rtsp, rtp, udp, mms, ftp, smb or file address, or a full path on the computer running VLC.",
+            "fr": "Une adresse http(s), rtsp, rtp, udp, mms, ftp, smb ou file, ou un chemin complet sur l'ordinateur de VLC.",
+            "de": "Eine http(s)-, rtsp-, rtp-, udp-, mms-, ftp-, smb- oder file-Adresse oder ein vollständiger Pfad auf dem VLC-Computer.",
+            "es": "Una dirección http(s), rtsp, rtp, udp, mms, ftp, smb o file, o una ruta completa en el equipo de VLC."
+          }
+        },
+        {
+          "key": "mode",
+          "type": "select",
+          "required": true,
+          "default": "play",
+          "label": {
+            "en": "How",
+            "fr": "Comment",
+            "de": "Wie",
+            "es": "Cómo"
+          },
+          "options": [
+            {
+              "value": "play",
+              "label": {
+                "en": "Add to the playlist and play now",
+                "fr": "Ajouter à la playlist et lire tout de suite",
+                "de": "Zur Playlist hinzufügen und sofort abspielen",
+                "es": "Añadir a la lista y reproducir ya"
+              }
+            },
+            {
+              "value": "replace",
+              "label": {
+                "en": "Replace the playlist and play",
+                "fr": "Remplacer la playlist et lire",
+                "de": "Playlist ersetzen und abspielen",
+                "es": "Sustituir la lista y reproducir"
+              }
+            },
+            {
+              "value": "enqueue",
+              "label": {
+                "en": "Add at the end of the playlist",
+                "fr": "Ajouter à la fin de la playlist",
+                "de": "Ans Ende der Playlist anhängen",
+                "es": "Añadir al final de la lista"
+              }
+            }
+          ]
+        },
+        {
+          "key": "volume",
+          "type": "number",
+          "required": false,
+          "min": 0,
+          "max": 100,
+          "label": {
+            "en": "Volume (%)",
+            "fr": "Volume (%)",
+            "de": "Lautstärke (%)",
+            "es": "Volumen (%)"
+          },
+          "description": {
+            "en": "Empty: keep the current volume.",
+            "fr": "Vide : garder le volume actuel.",
+            "de": "Leer: aktuelle Lautstärke behalten.",
+            "es": "Vacío: mantener el volumen actual."
+          }
+        }
+      ]
+    },
+    {
+      "key": "clear_playlist",
+      "label": {
+        "en": "Empty the VLC playlist",
+        "fr": "Vider la playlist de VLC",
+        "de": "VLC-Playlist leeren",
+        "es": "Vaciar la lista de VLC"
+      },
+      "description": {
+        "en": "Stop the playback and remove every item of the playlist.",
+        "fr": "Arrête la lecture et retire tous les éléments de la playlist.",
+        "de": "Stoppt die Wiedergabe und entfernt alle Einträge der Playlist.",
+        "es": "Detiene la reproducción y quita todos los elementos de la lista."
+      },
+      "timeout_seconds": 15,
+      "fields": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VLC",
+            "fr": "VLC",
+            "de": "VLC",
+            "es": "VLC"
+          },
+          "required": true
         }
       ]
     }
   ],
   "widgets": [
     {
-      "key": "demo_status",
-      "label": { "en": "Demo status", "fr": "État de la démo" },
-      "description": {
-        "en": "Live temperature and plug power, plug connection and observed location.",
-        "fr": "Température et puissance en direct, connexion de la prise, position observée."
+      "key": "player",
+      "label": {
+        "en": "VLC player",
+        "fr": "Lecteur VLC",
+        "de": "VLC-Player",
+        "es": "Reproductor VLC"
       },
-      "icon": "activity",
-      "action_timeout_seconds": 15
+      "description": {
+        "en": "What a VLC plays, with its artwork, volume and buttons.",
+        "fr": "Ce que joue un VLC, avec pochette, volume et boutons.",
+        "de": "Was ein VLC spielt, mit Cover, Lautstärke und Tasten.",
+        "es": "Lo que reproduce un VLC, con carátula, volumen y botones."
+      },
+      "icon": "music",
+      "action_timeout_seconds": 15,
+      "settings": [
+        {
+          "key": "device",
+          "type": "select",
+          "source": "devices",
+          "label": {
+            "en": "VLC",
+            "fr": "VLC",
+            "de": "VLC",
+            "es": "VLC"
+          },
+          "required": true
+        }
+      ]
     }
   ]
 }

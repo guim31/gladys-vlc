@@ -1,45 +1,107 @@
 // -----------------------------------------------------------------------------
-// Integration configuration.
+// Integration configuration: defaults (they mirror the `default` values of the
+// manifest `config_schema`, see test/manifest.test.js) and normalization, so
+// the rest of the code never deals with strings, blanks or `undefined`.
 //
-// The configuration is filled in by the user in Gladys, from the `config_schema`
-// declared in `gladys-assistant-integration.json`. The SDK fetches it for you
-// (`gladys.getConfig()`) and notifies you of every change through
-// `gladys.onConfigUpdated()`.
-//
-// This module only provides defaults and normalizes the received object, so the
-// rest of the code never has to deal with `undefined`.
+// Up to three VLC instances, one "slot" each (`host_1`, `password_1`...). The
+// slot number is the identity of the Gladys device: VLC has no serial number
+// nor any id of its own, and a VLC that changes address (new DHCP lease) must
+// keep its device, its history and its scenes.
 // -----------------------------------------------------------------------------
 
-// Defaults: they MUST stay consistent with the `default` values declared in the
-// `config_schema` of the manifest.
+export const LANGUAGES = ['en', 'fr', 'de', 'es'];
+
+export const SLOTS = [1, 2, 3];
+
+// The port of VLC's web interface (`--http-port`), 8080 unless changed.
+export const DEFAULT_PORT = 8080;
+
 export const DEFAULT_CONFIG = {
-  latitude: 48.8566, // Paris
-  longitude: 2.3522,
-  unit: 'celsius', // 'celsius' | 'fahrenheit'
-  // Seconds between two reads of the polled sensors. Gladys polls at most once
-  // a minute: slower intervals are applied by skipping polls (see
-  // createPoller in src/devices/index.js).
-  poll_frequency: 300,
-  // Reserved key (NOT in config_schema): because the manifest declares both
-  // 'local' and 'cloud' in its `transports` field, Gladys shows a standard
-  // "Prefer the local connection" toggle and sends the user's choice here.
-  // Read-only for the integration; defaults to true.
-  GLADYS_PREFER_LOCAL: true,
+  host_1: '',
+  password_1: '',
+  host_2: '',
+  password_2: '',
+  host_3: '',
+  password_3: '',
+  language: 'fr',
 };
 
+export const hostKey = (slot) => `host_${slot}`;
+export const passwordKey = (slot) => `password_${slot}`;
+
+// The integration runs in its own container: "localhost" is the container
+// itself, never the computer running VLC.
+const LOOPBACK = /^(localhost|127(?:\.\d{1,3}){3}|::1|\[::1\]|0\.0\.0\.0)$/i;
+
 /**
- * Merge the user config with the defaults.
- * @param {Record<string, unknown>} raw config returned by the SDK
+ * Turn what the user typed into the base URL of a VLC web interface:
+ * `192.0.2.30`, `192.0.2.30:9090`, `kitchen.lan` or a full `http(s)://` URL.
+ * @param {unknown} raw
+ * @returns {{ url: string, host: string } | { error: 'invalid' | 'loopback' } | null}
+ *   null when nothing is typed
+ */
+export function normalizeAddress(raw) {
+  if (typeof raw !== 'string' || raw.trim() === '') {
+    return null;
+  }
+  const text = raw.trim();
+  const withScheme = /^[a-z][a-z0-9+.-]*:\/\//i.test(text) ? text : `http://${text}`;
+  let url;
+  try {
+    url = new URL(withScheme);
+  } catch {
+    return { error: 'invalid' };
+  }
+  if (!['http:', 'https:'].includes(url.protocol) || url.hostname === '') {
+    return { error: 'invalid' };
+  }
+  if (url.username || url.password) {
+    // Credentials in the address would end up in logs and error messages.
+    return { error: 'invalid' };
+  }
+  // The interface lives at the root of VLC's web server; a pasted
+  // `/requests/status.json` or `/index.html` points at the same place.
+  if (!/^\/(?:requests\/[a-z_]+\.(?:json|xml)|index\.html)?$/i.test(url.pathname)) {
+    return { error: 'invalid' };
+  }
+  if (LOOPBACK.test(url.hostname)) {
+    return { error: 'loopback' };
+  }
+  const port = url.port || (url.protocol === 'https:' ? '' : String(DEFAULT_PORT));
+  return {
+    host: url.hostname,
+    url: `${url.protocol}//${url.host.replace(/:\d+$/, '')}${port ? `:${port}` : ''}`,
+  };
+}
+
+/**
+ * @param {Record<string, unknown>} raw the configuration returned by the SDK
+ * @returns {{
+ *   instances: { slot: number, url: string, host: string, password: string }[],
+ *   invalidSlots: { slot: number, error: 'invalid' | 'loopback' }[],
+ *   language: string,
+ * }}
  */
 export function normalizeConfig(raw = {}) {
+  const source = raw && typeof raw === 'object' ? raw : {};
+  const instances = [];
+  const invalidSlots = [];
+  for (const slot of SLOTS) {
+    const address = normalizeAddress(source[hostKey(slot)]);
+    if (address === null) {
+      continue;
+    }
+    if (address.error) {
+      invalidSlots.push({ slot, error: address.error });
+      continue;
+    }
+    // Not trimmed: a password may start or end with a space.
+    const password = typeof source[passwordKey(slot)] === 'string' ? source[passwordKey(slot)] : '';
+    instances.push({ slot, ...address, password });
+  }
   return {
-    ...DEFAULT_CONFIG,
-    ...raw,
-    // Force the types: config may arrive as strings from a form.
-    latitude: Number(raw.latitude ?? DEFAULT_CONFIG.latitude),
-    longitude: Number(raw.longitude ?? DEFAULT_CONFIG.longitude),
-    poll_frequency: Number(raw.poll_frequency ?? DEFAULT_CONFIG.poll_frequency),
-    // The preference is a boolean; anything but an explicit false means true.
-    GLADYS_PREFER_LOCAL: raw.GLADYS_PREFER_LOCAL !== false,
+    instances,
+    invalidSlots,
+    language: LANGUAGES.includes(source.language) ? source.language : DEFAULT_CONFIG.language,
   };
 }
