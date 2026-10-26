@@ -29,6 +29,9 @@ test('a file with tags: title, artist, album, position, length, item, volume', (
     length: 60,
     volumeRaw: 128,
     hasArt: false,
+    random: false,
+    loop: false,
+    repeat: false,
   });
   assert.equal(volumePercent(snapshot), 50);
   assert.equal(progressOf(snapshot), 3);

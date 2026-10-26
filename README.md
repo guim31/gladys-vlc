@@ -24,8 +24,14 @@ VideoLAN.
   artist, album, progress, time left, a volume slider, and play / pause /
   stop / previous / next / mute buttons. Web radios show their current song
   (ICY `now_playing`) and their station.
-- **The core's Music dashboard box** works with it (music category: play,
-  pause, previous, next, volume, playback state).
+- **Gladys 5.3 Music player**: the core's Music dashboard box shows the
+  artwork (reduced in the container to a JPEG of 400 px at most), title,
+  artist, album, a progress bar, shuffle, repeat and mute; its panel browses
+  the folders of the computer running VLC (home folder, computer) and VLC's
+  playlist, and plays a file, a folder or a playlist. No search and no
+  "play next" (VLC's web interface has neither). Already added VLC: click
+  **Update** in the Discover tab to get the new features (same ids).
+- Gladys 5.3 or later (1.0.x works with 5.1 and 5.2).
 - **Announcements**: the core's "Talk on a speaker" scene action plays the
   text-to-speech MP3 on VLC; then the integration removes it from the playlist
   and plays again what was playing (a file at its position, a radio live).

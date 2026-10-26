@@ -1,0 +1,43 @@
+{
+  "element": [
+    {
+      "mode": 16893,
+      "creation_time": 1793010160,
+      "size": 4096,
+      "modification_time": 1793010160,
+      "uri": "file:///music/Gamma/",
+      "type": "dir",
+      "name": "..",
+      "path": "/music/Gamma/Small Embedded/..",
+      "gid": 1000,
+      "uid": 1000,
+      "access_time": 1793010160
+    },
+    {
+      "mode": 33204,
+      "creation_time": 1793010160,
+      "size": 199014,
+      "modification_time": 1793010160,
+      "uri": "file:///music/Gamma/Small%20Embedded/01%20-%20Tiny%201.mp3",
+      "type": "file",
+      "name": "01 - Tiny 1.mp3",
+      "path": "/music/Gamma/Small Embedded/01 - Tiny 1.mp3",
+      "gid": 1000,
+      "uid": 1000,
+      "access_time": 1793010160
+    },
+    {
+      "mode": 33204,
+      "creation_time": 1793010160,
+      "size": 199014,
+      "modification_time": 1793010160,
+      "uri": "file:///music/Gamma/Small%20Embedded/02%20-%20Tiny%202.mp3",
+      "type": "file",
+      "name": "02 - Tiny 2.mp3",
+      "path": "/music/Gamma/Small Embedded/02 - Tiny 2.mp3",
+      "gid": 1000,
+      "uid": 1000,
+      "access_time": 1793010160
+    }
+  ]
+}

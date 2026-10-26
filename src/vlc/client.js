@@ -108,6 +108,17 @@ export class VlcClient {
     return status;
   }
 
+  /**
+   * A folder of the computer running VLC (browse.json): `{ uri }` a file://
+   * URI, or `{ dir }` a path (`~` is the home folder of VLC's user).
+   * @returns {Promise<object[]>} the `element` array
+   */
+  async browse({ uri, dir }) {
+    const query = new URLSearchParams(uri !== undefined ? { uri } : { dir });
+    const answer = await this.#json(`/requests/browse.json?${query}`);
+    return Array.isArray(answer?.element) ? answer.element : [];
+  }
+
   /** The playlist tree (playlist.json). */
   playlist() {
     return this.#json('/requests/playlist.json');

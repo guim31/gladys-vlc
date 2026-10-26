@@ -27,6 +27,7 @@ import {
   isActive,
   playbackEvents,
   readSnapshot,
+  repeatModeOf,
   toVlcVolume,
   VLC_VOLUME_100,
 } from './vlc/model.js';
@@ -253,6 +254,7 @@ export class VlcInstance extends EventEmitter {
     this.#followAnnouncement(next);
 
     let events = [];
+    const held = this.hold !== null;
     if (this.hold) {
       if (this.#holdIsOver(next)) {
         events = playbackEvents(this.hold.before, next);
@@ -262,7 +264,10 @@ export class VlcInstance extends EventEmitter {
       events = playbackEvents(previous, next);
     }
 
-    if (!previous || !sameSnapshot(previous, next)) {
+    // The end of a hold is an update too: during it, the hub published the
+    // playback state alone (src/hub.js), the rest follows now.
+    const released = held && this.hold === null;
+    if (!previous || released || !sameSnapshot(previous, next)) {
       this.emit('update', next, previous ?? emptySnapshot('off'));
     }
     for (const event of events) {
@@ -467,6 +472,67 @@ export class VlcInstance extends EventEmitter {
 
   clearPlaylist() {
     return this.#command('pl_empty');
+  }
+
+  // --- Gladys 5.3 player ------------------------------------------------------
+
+  /** playback_state written by Gladys: 0 pause, 1 play, 2 stop. */
+  setPlayback(state) {
+    if (state === 0) {
+      return this.pause();
+    }
+    return state === 1 ? this.play() : this.stopPlayback();
+  }
+
+  /** Seek to `seconds` in the current item; nothing when nothing is loaded. */
+  async seek(seconds) {
+    const { state } = await this.client.status();
+    if (state === 'playing' || state === 'paused') {
+      await this.#command('seek', { val: Math.max(0, Math.round(seconds)) });
+    }
+  }
+
+  /** random is a toggle in VLC's web interface: read it first. */
+  async setShuffle(on) {
+    const status = await this.client.status();
+    if ((status.random === true) !== on) {
+      await this.#command('pl_random');
+    }
+  }
+
+  /**
+   * loop and repeat are toggles, and over HTTP turning one on turns the other
+   * off: read them, toggle what differs.
+   * @param {'off'|'all'|'one'} mode
+   */
+  async setRepeat(mode) {
+    let current = readSnapshot(await this.client.status());
+    if (repeatModeOf(current) === mode) {
+      return;
+    }
+    if (mode === 'all' && !current.loop) {
+      current = readSnapshot(await this.client.status('pl_loop'));
+    }
+    if (mode === 'one' && !current.repeat) {
+      current = readSnapshot(await this.client.status('pl_repeat'));
+    }
+    if (mode !== 'all' && current.loop) {
+      current = readSnapshot(await this.client.status('pl_loop'));
+    }
+    if (mode !== 'one' && current.repeat) {
+      await this.client.status('pl_repeat');
+    }
+    this.refreshSoon();
+  }
+
+  /** Replace the playlist with an MRL and play it (the music panel). */
+  replaceWith(mrl) {
+    return this.playMrl(mrl, 'replace');
+  }
+
+  /** Play the playlist item of that id. */
+  playItem(id) {
+    return this.#command('pl_play', { id });
   }
 
   /** The artwork of the current item (VLC's /art), or null. */

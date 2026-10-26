@@ -103,6 +103,12 @@ export class FakeVlc {
     // /art answers 404 this many times first: VLC finds a cover a moment
     // after the item starts.
     this.artMisses = 0;
+    // Playback modes; over HTTP, loop and repeat exclude each other (3.0.21).
+    this.random = false;
+    this.loop = false;
+    this.repeat = false;
+    // browse.json: folder URI -> its `element` array (as VLC answers it).
+    this.folders = new Map();
     this.requests = [];
   }
 
@@ -258,19 +264,41 @@ export class FakeVlc {
       case 'seek':
         this.time = Number(params.val);
         break;
+      case 'pl_random':
+        this.random = !this.random;
+        break;
+      case 'pl_loop':
+        this.loop = !this.loop;
+        if (this.loop) {
+          this.repeat = false;
+        }
+        break;
+      case 'pl_repeat':
+        this.repeat = !this.repeat;
+        if (this.repeat) {
+          this.loop = false;
+        }
+        break;
       default:
         break;
     }
   }
 
   status() {
+    const modes = { random: this.random, loop: this.loop, repeat: this.repeat };
     if (this.state === 'stopped' || !this.current) {
-      return { ...fixture('status-stopped-empty.json'), volume: this.volume, state: 'stopped' };
+      return {
+        ...fixture('status-stopped-empty.json'),
+        ...modes,
+        volume: this.volume,
+        state: 'stopped',
+      };
     }
     const item = this.current;
     const status = fixture('status-playing.json');
     return {
       ...status,
+      ...modes,
       volume: this.volume,
       state: this.state,
       time: this.time,
@@ -324,6 +352,14 @@ export class FakeVlc {
         this.#run(command, rest);
       }
       return text(200, JSON.stringify(this.status(), null, 2));
+    }
+    if (pathname === '/requests/browse.json') {
+      const key = params.uri ?? `dir:${params.dir}`;
+      const elements = this.folders.get(key);
+      // VLC answers an HTML error page, with a 200, for a folder it cannot open.
+      return elements
+        ? text(200, JSON.stringify({ element: elements }))
+        : text(200, '<html><h1>Error loading /requests/browse.json</h1></html>');
     }
     if (pathname === '/requests/playlist.json') {
       return text(200, JSON.stringify(this.playlistTree(), null, 2));

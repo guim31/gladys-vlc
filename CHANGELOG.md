@@ -10,6 +10,35 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Added
+
+- Gladys 5.3 Music player: artwork, duration, position (seek), shuffle and
+  repeat (off, all = VLC's loop, one = VLC's repeat) features, published with
+  `publishNowPlaying`; writable playback state (pause, play, stop).
+- Music panel: browse the home folder and the whole computer running VLC
+  (folders, audio and video files, playlists; a folder plays as a whole),
+  VLC's playlist as the queue (jump to an item), play = replace the playlist.
+  No search and no "play next / add" (VLC's web interface cannot move an
+  item).
+- Artwork larger than 300 KB (a cover embedded in a file is often several
+  megabytes) is reduced in the container to a JPEG of 400 px at most, in
+  plain JavaScript (`jpeg-js`); it used to be dropped.
+
+### Changed
+
+- Requires Gladys 5.3.0 (`music` manifest field), SDK 0.16.
+- Title, artist and album become music features (they were text features),
+  mute becomes a music on/off feature (it was a television push button),
+  with the same ids: click **Update** in the Discover tab to convert them and
+  get the new features; until then the mute button keeps toggling.
+- The playing feature reads 2 when VLC is stopped or closed (it read 0):
+  a scene waiting for 0 to detect a stop needs 2 now.
+- Nothing playing: title, artist and album are empty (they read "Nothing
+  playing" and "—").
+- During an announcement, the music box keeps showing the song (only the
+  playback state follows).
+- A muted VLC (volume 0) is shown muted, its slider at the volume before.
+
 ## [1.0.1] - 2026-10-13
 
 ### Added
