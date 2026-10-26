@@ -224,11 +224,12 @@ export class Hub {
     if (!this.#isCurrent(entry)) {
       return;
     }
-    const artwork = this.#fetchArtwork(entry, snapshot);
+    this.#fetchArtwork(entry, snapshot);
+    // Also when the download started at an earlier read: one redraw.
     if (entry.artwork?.pending) {
       let timer;
       await Promise.race([
-        artwork,
+        entry.artwork.done,
         new Promise((resolve) => {
           timer = setTimeout(resolve, ARTWORK_WAIT_MS);
           timer.unref?.();
@@ -256,17 +257,18 @@ export class Hub {
     }
     const { vlc } = entry;
     const states = buildStates(this.gladys, entry.slot, vlc.snapshot, this.language);
-    // During an announcement and the resume after it, only the playback state
-    // follows: the announcement is not a track to show.
-    const music = vlc.hold
-      ? { playback_state: nowPlaying(vlc.snapshot).playback_state }
-      : nowPlaying(vlc.snapshot, {
+    try {
+      await this.gladys.publishChangedStates(states, { heartbeat: HEARTBEAT_MS });
+      // During an announcement and the resume after it, the music box keeps
+      // what played before (the announcement is not a track to show); the end
+      // of the hold is an update (src/instance.js) that publishes everything.
+      if (!vlc.hold) {
+        const music = nowPlaying(vlc.snapshot, {
           artworkUrl: this.musicArtworkUrl(entry),
           muteBackup: vlc.muteBackup,
         });
-    try {
-      await this.gladys.publishChangedStates(states, { heartbeat: HEARTBEAT_MS });
-      await this.gladys.publishNowPlaying(deviceIds(this.gladys, entry.slot).device, music);
+        await this.gladys.publishNowPlaying(deviceIds(this.gladys, entry.slot).device, music);
+      }
       this.issues.ok('states', 'States published again');
     } catch (err) {
       // Gladys away: one line, not one per read until it is back.
@@ -280,7 +282,10 @@ export class Hub {
     }
   }
 
-  /** The user added a device: states sent before were dropped by Gladys. */
+  /**
+   * The user added a device, or updated it from the Discover tab (new
+   * features in 1.1.0): states sent before were dropped by Gladys.
+   */
   async onDeviceCreated(device) {
     const entry = this.instances.get(slotOf(this.gladys, device?.external_id));
     if (!entry) {
@@ -378,6 +383,10 @@ export class Hub {
     }
     const artwork = { id, key: null, base64: null, attempts: (known?.attempts ?? 0) + 1 };
     artwork.pending = true;
+    let finish;
+    artwork.done = new Promise((resolve) => {
+      finish = resolve;
+    });
     entry.artwork = artwork;
     try {
       const raw = await entry.vlc.art(MAX_ARTWORK_DOWNLOAD);
@@ -415,6 +424,7 @@ export class Hub {
       logger.debug(`VLC ${entry.slot}: no artwork (${err.message})`);
     } finally {
       artwork.pending = false;
+      finish();
     }
   }
 
@@ -433,10 +443,18 @@ export class Hub {
   /** onMusicGetArtwork: the raw base64 of a music artwork key. */
   musicArtwork(key) {
     const image = this.musicImages.get(key);
-    if (!image) {
-      throw new Error(`Unknown artwork ${key}`);
+    if (image) {
+      return image;
     }
-    return image;
+    // Pushed out of the recent ones by other VLC: what an instance still
+    // plays is always served (the core asks again after its 1 h cache).
+    for (const entry of this.instances.values()) {
+      const { artwork } = entry;
+      if (artwork?.musicUrl && this.gladys.artworkKey(artwork.musicUrl) === key) {
+        return artwork.base64;
+      }
+    }
+    throw new Error(`Unknown artwork ${key}`);
   }
 
   /** onWidgetGetImage: the raw base64 of a cover key. */
@@ -617,7 +635,11 @@ export class Hub {
 
   /** The meaning of an enum value written by Gladys, or a coded error. */
   #choice(value, table) {
-    const number = Number(value);
+    // Number('') and Number(null) are 0: an empty write is not a choice.
+    const number =
+      typeof value === 'number' || (typeof value === 'string' && value.trim() !== '')
+        ? Number(value)
+        : NaN;
     if (!Object.hasOwn(table, number)) {
       throw new CommandError('bad_value', this.language);
     }

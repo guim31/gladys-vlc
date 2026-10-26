@@ -66,6 +66,7 @@ export function registerHandlers(gladys, options = {}) {
   // VLC itself, src/instance.js); this only serves a Gladys that would poll.
   gladys.onPoll(whenReady((device) => hub.poll(device)));
   gladys.onDeviceCreated(whenReady((device) => hub.onDeviceCreated(device)));
+  gladys.onDeviceUpdated(whenReady((device) => hub.onDeviceCreated(device)));
   gladys.onConfigUpdated(
     whenReady((config) => {
       logger.info('New configuration received');

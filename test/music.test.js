@@ -258,3 +258,30 @@ test('volume: a percentage 0-100 for the Music box slider, VLC scale (256 = 100 
   vlc.volume = 320;
   await until(() => stateOf(gladys, 'volume') === 100, 2000, 'capped');
 });
+
+test('"Update" in the Discover tab: everything is published again, VLC unchanged', async (t) => {
+  const world = await createAddedWorld();
+  t.after(() => world.app.stop());
+  const { gladys } = world;
+  await until(() => stateOf(gladys, 'playback_state') === 2, 2000, 'stopped');
+  await settle(60);
+  const sent = (key) =>
+    gladys.fake.states.filter((s) => s.device_feature_external_id === featureId(key)).length;
+  const before = sent('repeat');
+  await gladys.fake.deviceUpdated(gladys.fake.discoveredDevices[0]);
+  await until(() => sent('repeat') > before, 2000, 'repeat published again');
+  assert.ok(sent('artwork') >= 2);
+});
+
+test('an empty write is not a choice', async (t) => {
+  const world = await createAddedWorld();
+  t.after(() => world.app.stop());
+  const { gladys, vlc } = world;
+  vlc.open(MEDIA.tone1);
+  await until(() => stateOf(gladys, 'playback_state') === 1, 2000, 'playing');
+  for (const value of ['', null, ' ']) {
+    const ack = await gladys.fake.setValue(device(), feature('playback_state'), value);
+    assert.equal(ack.success, false, JSON.stringify(value));
+  }
+  assert.equal(vlc.state, 'playing');
+});
