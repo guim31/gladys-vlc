@@ -8,8 +8,8 @@
     "de": "Steuere VLC: Wiedergabe, Lautstärke, aktueller Titel, Webradios, Ansagen und Szenen.",
     "es": "Controle VLC: reproducción, volumen, título actual, radios web, avisos y escenas."
   },
-  "version": "1.0.1",
-  "docker_image": "ghcr.io/guim31/gladys-vlc:1.0.1",
+  "version": "1.1.0",
+  "docker_image": "ghcr.io/guim31/gladys-vlc:1.1.0",
   "gladys_version": ">=5.3.0",
   "music": { "browse": true, "search": false, "queue": true, "append": false },
   "cover_image": "https://raw.githubusercontent.com/guim31/gladys-vlc/main/cover.png",
