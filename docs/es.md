@@ -107,11 +107,11 @@ Cada VLC es un dispositivo con estas funciones:
 
 | Función                | Lo que muestra o hace                                              |
 | ---------------------- | ------------------------------------------------------------------ |
-| Reproduciendo          | 1 mientras VLC reproduce, 0 si no (pausa, detenido, cerrado)       |
+| Reproduciendo          | 1 reproduce, 0 pausa, 2 detenido o cerrado; ajustable (5.3)        |
 | Estado de reproducción | Reproduciendo, En pausa, Detenido, o Apagado o inaccesible         |
 | Título                 | El título del elemento; en una radio web, la canción que anuncia   |
 | Artista                | El artista; en una radio web que no lo da, el nombre de la emisora |
-| Álbum                  | El álbum (— si es desconocido)                                     |
+| Álbum                  | El álbum (vacío si es desconocido o si nada se reproduce)          |
 | Progreso               | El porcentaje reproducido (0 en un flujo en directo)               |
 | Tiempo restante        | Los minutos restantes (0 en un flujo en directo)                   |
 | Volumen                | Un deslizador, de 0 a 100 %                                        |
@@ -119,7 +119,7 @@ Cada VLC es un dispositivo con estas funciones:
 | Pausa                  | Pone en pausa (no pasa nada si no suena nada)                      |
 | Detener                | Detiene                                                            |
 | Anterior, Siguiente    | Se mueve por la lista                                              |
-| Silencio               | Silencia, o devuelve el volumen                                    |
+| Silencio               | Activado o no: silencia, o devuelve el volumen                     |
 | Notificación           | La usa la acción de escena **Hablar en un altavoz** del núcleo     |
 
 **Volumen**: el deslizador de VLC llega al 125 % (y más desde la interfaz
@@ -145,6 +145,35 @@ para un VLC aún no añadido a Gladys, y cada 30 segundos cuando VLC está
 cerrado o inaccesible: peticiones locales que VLC contesta en pocos
 milisegundos, sin cuota. Una sola respuesta perdida se ignora; tras dos, VLC
 queda «Apagado o inaccesible».
+
+## Reproductor Música de Gladys 5.3
+
+Desde Gladys 5.3, cada VLC es un reproductor completo en la caja **Música**
+del panel: carátula, título, artista y álbum, barra de progreso, aleatorio,
+repetición (no, toda la lista, el elemento actual), silencio y un panel para
+reproducir y explorar.
+
+- **Explorar**: dos entradas, **Carpeta personal** (del usuario que ejecuta
+  VLC) y **Equipo**, luego cualquier carpeta. Se muestran carpetas, archivos
+  de audio y vídeo y listas (M3U, PLS, XSPF…); una carpeta se reproduce
+  entera. Reproducir algo reemplaza la lista de VLC.
+- **Cola**: la lista de reproducción de VLC; un toque salta a un elemento.
+- **No disponibles**: la búsqueda (VLC no tiene) y «reproducir a
+  continuación / añadir a la cola» (la interfaz web de VLC no sabe mover un
+  elemento).
+- **Carátula**: VLC sirve la imagen tal como la encuentra (a menudo varios
+  megabytes cuando va dentro del archivo); la integración la convierte en un
+  JPEG de 400 px como máximo. Las listas no tienen miniaturas.
+- **Silencio**: la interfaz web de VLC no tiene; silenciar pone el volumen a
+  0 y guarda el anterior, que el control deslizante sigue mostrando.
+
+**VLC ya añadido**: abra **Integraciones > VLC > Descubrir** y haga clic en
+**Actualizar** en el dispositivo. Recibe las nuevas funciones (carátula,
+duración, posición, aleatorio, repetición); Título, Artista, Álbum y
+Silencio conservan sus escenas y pasan a ser funciones de música.
+**Reproduciendo** vale ahora 2 cuando VLC está detenido (antes 0): ajuste
+una escena que espera 0 para detectar una parada. La caja Música del núcleo
+va primero; el widget de la integración sigue disponible.
 
 ## Widget del panel
 

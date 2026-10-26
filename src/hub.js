@@ -6,7 +6,17 @@
 import { createHash } from 'node:crypto';
 import { createLogger } from '@gladysassistant/integration-sdk';
 import { SLOTS } from './config.js';
-import { BUTTONS, buildDevice, buildStates, deviceIds, featureKeyOf, slotOf } from './devices.js';
+import { ArtworkError, MAX_ARTWORK_DOWNLOAD, prepareArtwork } from './artwork-resize.js';
+import {
+  BUTTONS,
+  REPEAT_MODES,
+  buildDevice,
+  buildStates,
+  deviceIds,
+  featureKeyOf,
+  nowPlaying,
+  slotOf,
+} from './devices.js';
 import { createIssueLog } from './issues.js';
 import { VlcInstance } from './instance.js';
 import { VlcError } from './vlc/client.js';
@@ -34,6 +44,13 @@ export const TRIGGERS = {
 
 // The core refuses a widget image over 300 KB (decoded).
 export const MAX_IMAGE_BYTES = 300 * 1024;
+
+// A new item waits this long at most for its artwork before its now-playing
+// is published (one redraw instead of two); a later artwork follows alone.
+export const ARTWORK_WAIT_MS = 2_000;
+
+// Music artwork keys served (onMusicGetArtwork), the most recent ones.
+const MAX_MUSIC_IMAGES = 12;
 
 // /art asked this many times per item at most (VLC finds the art a moment
 // after the item starts).
@@ -88,6 +105,8 @@ export class Hub {
     this.config = { instances: [], invalidSlots: [], language: 'fr' };
     // slot -> { slot, settings, vlc, artwork: { id, key, base64, attempts } | null }
     this.instances = new Map();
+    // music artwork key -> raw base64 (onMusicGetArtwork), most recent last
+    this.musicImages = new Map();
     this.saved = { mute: {} };
     this.lastStatus = '';
     this.widgetRefreshAt = 0;
@@ -205,6 +224,18 @@ export class Hub {
     if (!this.#isCurrent(entry)) {
       return;
     }
+    const artwork = this.#fetchArtwork(entry, snapshot);
+    if (entry.artwork?.pending) {
+      let timer;
+      await Promise.race([
+        artwork,
+        new Promise((resolve) => {
+          timer = setTimeout(resolve, ARTWORK_WAIT_MS);
+          timer.unref?.();
+        }),
+      ]);
+      clearTimeout(timer);
+    }
     await this.#publishStates(entry);
     if (
       snapshot.state !== previous.state ||
@@ -223,9 +254,19 @@ export class Hub {
     if (!this.#isCurrent(entry) || !this.isCreated(entry.slot)) {
       return;
     }
-    const states = buildStates(this.gladys, entry.slot, entry.vlc.snapshot, this.language);
+    const { vlc } = entry;
+    const states = buildStates(this.gladys, entry.slot, vlc.snapshot, this.language);
+    // During an announcement and the resume after it, only the playback state
+    // follows: the announcement is not a track to show.
+    const music = vlc.hold
+      ? { playback_state: nowPlaying(vlc.snapshot).playback_state }
+      : nowPlaying(vlc.snapshot, {
+          artworkUrl: this.musicArtworkUrl(entry),
+          muteBackup: vlc.muteBackup,
+        });
     try {
       await this.gladys.publishChangedStates(states, { heartbeat: HEARTBEAT_MS });
+      await this.gladys.publishNowPlaying(deviceIds(this.gladys, entry.slot).device, music);
       this.issues.ok('states', 'States published again');
     } catch (err) {
       // Gladys away: one line, not one per read until it is back.
@@ -339,22 +380,38 @@ export class Hub {
     artwork.pending = true;
     entry.artwork = artwork;
     try {
-      const bytes = await entry.vlc.art(MAX_IMAGE_BYTES);
-      if (!bytes) {
+      const raw = await entry.vlc.art(MAX_ARTWORK_DOWNLOAD);
+      if (!raw) {
         return;
       }
-      if (!imageType(bytes)) {
+      if (!imageType(raw)) {
         artwork.attempts = ART_ATTEMPTS;
         throw new Error('not a JPEG, PNG or WebP image');
       }
+      // VLC serves the artwork as found (a cover embedded in a file is often
+      // a few megabytes): made a JPEG of 400 px at most, under 300 KB.
+      const bytes = await prepareArtwork(raw, { maxBytes: MAX_IMAGE_BYTES });
       if (artworkId(entry.vlc.snapshot) !== id || !this.#isCurrent(entry)) {
         return; // the item changed meanwhile: that art is not the current one
       }
       // The core caches an image by key for an hour: the key follows the bytes.
-      artwork.key = `cover-${createHash('sha256').update(bytes).digest('hex').slice(0, 24)}`;
+      const hash = createHash('sha256').update(bytes).digest('hex').slice(0, 24);
+      artwork.key = `cover-${hash}`;
       artwork.base64 = bytes.toString('base64');
+      artwork.musicUrl = `vlc-artwork:${entry.slot}:${hash}`;
+      const musicKey = this.gladys.artworkKey(artwork.musicUrl);
+      this.musicImages.delete(musicKey);
+      this.musicImages.set(musicKey, artwork.base64);
+      while (this.musicImages.size > MAX_MUSIC_IMAGES) {
+        this.musicImages.delete(this.musicImages.keys().next().value);
+      }
+      artwork.pending = false;
+      await this.#publishStates(entry);
       this.refreshWidget();
     } catch (err) {
+      if (err instanceof ArtworkError) {
+        artwork.attempts = ART_ATTEMPTS;
+      }
       logger.debug(`VLC ${entry.slot}: no artwork (${err.message})`);
     } finally {
       artwork.pending = false;
@@ -365,6 +422,21 @@ export class Hub {
   artworkKey(entry) {
     const { artwork } = entry;
     return artwork && artwork.id === artworkId(entry.vlc.snapshot) ? artwork.key : null;
+  }
+
+  /** The artwork source of what an instance plays, for publishNowPlaying. */
+  musicArtworkUrl(entry) {
+    const { artwork } = entry;
+    return artwork?.key && artwork.id === artworkId(entry.vlc.snapshot) ? artwork.musicUrl : null;
+  }
+
+  /** onMusicGetArtwork: the raw base64 of a music artwork key. */
+  musicArtwork(key) {
+    const image = this.musicImages.get(key);
+    if (!image) {
+      throw new Error(`Unknown artwork ${key}`);
+    }
+    return image;
   }
 
   /** onWidgetGetImage: the raw base64 of a cover key. */
@@ -503,7 +575,53 @@ export class Hub {
       await this.run(device.external_id, (vlc) => this.#press(vlc, key));
       return;
     }
+    if (key === 'mute') {
+      // A television push button before the "Update" of the Discover tab: it
+      // toggles, as in 1.0.
+      const legacy = feature?.category === 'television';
+      const mode = legacy ? 'toggle' : this.#choice(value, { 0: 'unmute', 1: 'mute' });
+      logger.info(`${where}: mute ${mode}`);
+      await this.run(device.external_id, (vlc) => vlc.setMute(mode));
+      return;
+    }
+    if (key === 'playback_state') {
+      const state = this.#choice(value, { 0: 0, 1: 1, 2: 2 });
+      logger.info(`${where}: playback ${['pause', 'play', 'stop'][state]}`);
+      await this.run(device.external_id, (vlc) => vlc.setPlayback(state));
+      return;
+    }
+    if (key === 'position') {
+      const seconds = Number(value);
+      if (!Number.isFinite(seconds) || seconds < 0) {
+        throw new CommandError('bad_value', this.language);
+      }
+      logger.info(`${where}: seek to ${Math.round(seconds)} s`);
+      await this.run(device.external_id, (vlc) => vlc.seek(seconds));
+      return;
+    }
+    if (key === 'shuffle') {
+      const on = this.#choice(value, { 0: false, 1: true });
+      logger.info(`${where}: shuffle ${on ? 'on' : 'off'}`);
+      await this.run(device.external_id, (vlc) => vlc.setShuffle(on));
+      return;
+    }
+    if (key === 'repeat') {
+      const modes = Object.fromEntries(Object.entries(REPEAT_MODES).map(([m, v]) => [v, m]));
+      const mode = this.#choice(value, modes);
+      logger.info(`${where}: repeat ${mode}`);
+      await this.run(device.external_id, (vlc) => vlc.setRepeat(mode));
+      return;
+    }
     throw new Error(`Feature ${key} cannot be controlled`);
+  }
+
+  /** The meaning of an enum value written by Gladys, or a coded error. */
+  #choice(value, table) {
+    const number = Number(value);
+    if (!Object.hasOwn(table, number)) {
+      throw new CommandError('bad_value', this.language);
+    }
+    return table[number];
   }
 
   #press(vlc, key) {
@@ -516,10 +634,8 @@ export class Hub {
         return vlc.stopPlayback();
       case 'previous':
         return vlc.previous();
-      case 'next':
-        return vlc.next();
       default:
-        return vlc.setMute('toggle');
+        return vlc.next();
     }
   }
 

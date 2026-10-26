@@ -23,6 +23,11 @@ export const NAMES = {
     previous: 'Previous',
     next: 'Next',
     notification: 'Notification',
+    artwork: 'Artwork',
+    duration: 'Duration',
+    position: 'Position',
+    shuffle: 'Shuffle',
+    repeat: 'Repeat',
   },
   fr: {
     playback_state: 'En lecture',
@@ -40,6 +45,11 @@ export const NAMES = {
     previous: 'Précédent',
     next: 'Suivant',
     notification: 'Notification',
+    artwork: 'Pochette',
+    duration: 'Durée',
+    position: 'Position',
+    shuffle: 'Aléatoire',
+    repeat: 'Répétition',
   },
   de: {
     playback_state: 'Spielt',
@@ -57,6 +67,11 @@ export const NAMES = {
     previous: 'Zurück',
     next: 'Weiter',
     notification: 'Benachrichtigung',
+    artwork: 'Cover',
+    duration: 'Dauer',
+    position: 'Position',
+    shuffle: 'Zufallswiedergabe',
+    repeat: 'Wiederholung',
   },
   es: {
     playback_state: 'Reproduciendo',
@@ -74,6 +89,11 @@ export const NAMES = {
     previous: 'Anterior',
     next: 'Siguiente',
     notification: 'Notificación',
+    artwork: 'Carátula',
+    duration: 'Duración',
+    position: 'Posición',
+    shuffle: 'Aleatorio',
+    repeat: 'Repetición',
   },
 };
 
@@ -210,6 +230,8 @@ export const COMMAND_ERRORS = {
     unauthorized: 'VLC refused the password.',
     refused: 'VLC refused the command.',
     out_of_range: 'The volume must be between 0 and 100.',
+    bad_value: 'This value is not supported.',
+    not_found: 'This item is no longer in the VLC playlist.',
     bad_url: 'Give an http(s), rtsp, rtp, udp, mms, ftp, smb or file address, or a full file path.',
   },
   fr: {
@@ -218,6 +240,8 @@ export const COMMAND_ERRORS = {
     unauthorized: 'VLC a refusé le mot de passe.',
     refused: 'VLC a refusé la commande.',
     out_of_range: 'Le volume doit être compris entre 0 et 100.',
+    bad_value: "Cette valeur n'est pas prise en charge.",
+    not_found: "Cet élément n'est plus dans la liste de lecture de VLC.",
     bad_url:
       'Indiquez une adresse http(s), rtsp, rtp, udp, mms, ftp, smb ou file, ou un chemin de fichier complet.',
   },
@@ -227,6 +251,8 @@ export const COMMAND_ERRORS = {
     unauthorized: 'VLC hat das Passwort abgelehnt.',
     refused: 'VLC hat den Befehl abgelehnt.',
     out_of_range: 'Die Lautstärke muss zwischen 0 und 100 liegen.',
+    bad_value: 'Dieser Wert wird nicht unterstützt.',
+    not_found: 'Dieser Eintrag ist nicht mehr in der Wiedergabeliste von VLC.',
     bad_url:
       'Gib eine http(s)-, rtsp-, rtp-, udp-, mms-, ftp-, smb- oder file-Adresse an, oder einen vollständigen Dateipfad.',
   },
@@ -236,6 +262,8 @@ export const COMMAND_ERRORS = {
     unauthorized: 'VLC ha rechazado la contraseña.',
     refused: 'VLC ha rechazado la orden.',
     out_of_range: 'El volumen debe estar entre 0 y 100.',
+    bad_value: 'Este valor no es compatible.',
+    not_found: 'Este elemento ya no está en la lista de reproducción de VLC.',
     bad_url:
       'Indique una dirección http(s), rtsp, rtp, udp, mms, ftp, smb o file, o una ruta de archivo completa.',
   },
@@ -290,3 +318,11 @@ export function formatPosition(seconds) {
   const s = String(total % 60).padStart(2, '0');
   return h > 0 ? `${h}:${String(m).padStart(2, '0')}:${s}` : `${m}:${s}`;
 }
+
+/** The entry points of the music panel (Gladys 5.3), by language. */
+export const CATALOG_ROOTS = {
+  en: { home: 'Home folder', computer: 'Computer' },
+  fr: { home: 'Dossier personnel', computer: 'Ordinateur' },
+  de: { home: 'Persönlicher Ordner', computer: 'Computer' },
+  es: { home: 'Carpeta personal', computer: 'Equipo' },
+};

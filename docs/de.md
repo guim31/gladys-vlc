@@ -110,11 +110,11 @@ Jedes VLC ist ein Gerät mit diesen Funktionen:
 
 | Funktion         | Was sie zeigt oder tut                                             |
 | ---------------- | ------------------------------------------------------------------ |
-| Spielt           | 1, während VLC spielt, sonst 0 (Pause, Stopp, geschlossen)         |
+| Spielt           | 1 spielt, 0 Pause, 2 gestoppt oder geschlossen; steuerbar (5.3)    |
 | Wiedergabestatus | Wiedergabe, Pausiert, Gestoppt oder Aus oder nicht erreichbar      |
 | Titel            | Der Titel des Eintrags; bei einem Webradio der angesagte Song      |
 | Interpret        | Der Interpret; bei einem Webradio ohne Angabe der Name des Senders |
-| Album            | Das Album (— wenn unbekannt)                                       |
+| Album            | Das Album (leer, wenn unbekannt oder nichts spielt)                |
 | Fortschritt      | Der gespielte Anteil in Prozent (0 bei einem Livestream)           |
 | Restzeit         | Die restlichen Minuten (0 bei einem Livestream)                    |
 | Lautstärke       | Ein Schieberegler, 0 bis 100 %                                     |
@@ -122,7 +122,7 @@ Jedes VLC ist ein Gerät mit diesen Funktionen:
 | Pause            | Pausiert (nichts passiert, wenn nichts läuft)                      |
 | Stopp            | Stoppt                                                             |
 | Zurück, Weiter   | Bewegt sich in der Playlist                                        |
-| Stumm            | Schaltet stumm oder holt die Lautstärke zurück                     |
+| Stumm            | An oder aus: schaltet stumm oder holt die Lautstärke zurück        |
 | Benachrichtigung | Genutzt von der Szenenaktion **Auf einem Lautsprecher sprechen**   |
 
 **Lautstärke**: Der Regler von VLC geht bis 125 % (und über die Weboberfläche
@@ -149,6 +149,36 @@ für ein VLC, das noch nicht zu Gladys hinzugefügt ist, und alle 30 Sekunden,
 wenn VLC geschlossen oder nicht erreichbar ist: lokale Anfragen, die VLC in
 wenigen Millisekunden beantwortet, ohne Kontingent. Eine einzelne verpasste
 Antwort wird ignoriert; nach zweien ist VLC „Aus oder nicht erreichbar“.
+
+## Gladys 5.3 Musik-Player
+
+Ab Gladys 5.3 ist jedes VLC ein vollständiger Player in der **Musik**-Box des
+Dashboards: Cover, Titel, Interpret und Album, Fortschrittsbalken,
+Zufallswiedergabe, Wiederholung (aus, ganze Wiedergabeliste, aktueller
+Eintrag), Stumm und ein Panel zum Abspielen und Durchsuchen.
+
+- **Durchsuchen**: zwei Einstiege, **Persönlicher Ordner** (des Benutzers,
+  der VLC startet) und **Computer**, dann jeder Ordner. Ordner, Audio- und
+  Videodateien und Wiedergabelisten (M3U, PLS, XSPF…) werden angezeigt; ein
+  Ordner lässt sich als Ganzes abspielen. Etwas abspielen ersetzt die
+  Wiedergabeliste von VLC.
+- **Warteschlange**: die Wiedergabeliste von VLC; ein Tippen springt zu
+  einem Eintrag.
+- **Nicht vorhanden**: Suche (VLC hat keine) und „als Nächstes / anhängen“
+  (die Weboberfläche von VLC kann keinen Eintrag verschieben).
+- **Cover**: VLC liefert das Bild, wie es es findet (oft mehrere Megabyte,
+  wenn es in der Datei steckt); die Integration macht daraus ein JPEG von
+  höchstens 400 px. Die Listen haben keine Vorschaubilder.
+- **Stumm**: Die Weboberfläche von VLC hat kein Stumm; Stummschalten setzt
+  die Lautstärke auf 0 und merkt sich die vorige, die der Regler weiter zeigt.
+
+**Bereits hinzugefügtes VLC**: Öffne **Integrationen > VLC > Entdecken** und
+klicke beim Gerät auf **Aktualisieren**. Es erhält die neuen Funktionen
+(Cover, Dauer, Position, Zufallswiedergabe, Wiederholung); Titel, Interpret,
+Album und Stumm behalten ihre Szenen und werden Musikfunktionen. **Spielt**
+zeigt jetzt 2, wenn VLC gestoppt ist (vorher 0): Passe eine Szene an, die
+auf 0 wartet, um ein Stoppen zu erkennen. Die Musik-Box des Kerns kommt
+zuerst; das Widget der Integration bleibt verfügbar.
 
 ## Dashboard-Widget
 

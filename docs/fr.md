@@ -109,11 +109,11 @@ Chaque VLC est un appareil avec ces fonctionnalités :
 
 | Fonctionnalité     | Ce qu'elle montre ou fait                                      |
 | ------------------ | -------------------------------------------------------------- |
-| En lecture         | 1 quand VLC joue, 0 sinon (pause, arrêt, fermé)                |
+| En lecture         | 1 lecture, 0 pause, 2 arrêt ou fermé ; réglable (Gladys 5.3)   |
 | État de la lecture | En lecture, En pause, Arrêté, ou Éteint ou injoignable         |
 | Titre              | Le titre de l'élément ; pour une radio web, le morceau annoncé |
 | Artiste            | L'artiste ; pour une radio web qui n'en donne pas, la station  |
-| Album              | L'album (— s'il est inconnu)                                   |
+| Album              | L'album (vide s'il est inconnu ou si rien ne joue)             |
 | Progression        | Le pourcentage lu (0 pour un flux en direct)                   |
 | Temps restant      | Les minutes restantes (0 pour un flux en direct)               |
 | Volume             | Un curseur, de 0 à 100 %                                       |
@@ -121,7 +121,7 @@ Chaque VLC est un appareil avec ces fonctionnalités :
 | Pause              | Met en pause (rien ne se passe si rien ne joue)                |
 | Stop               | Arrête                                                         |
 | Précédent, Suivant | Avance ou recule dans la playlist                              |
-| Sourdine           | Coupe le son, ou le rétablit                                   |
+| Sourdine           | Activée ou non : coupe le son, ou le rétablit                  |
 | Notification       | Utilisée par l'action de scène **Parler sur une enceinte**     |
 
 **Volume** : le curseur de VLC monte jusqu'à 125 % (et plus depuis
@@ -148,6 +148,35 @@ les minutes pour un VLC pas encore ajouté à Gladys, et toutes les 30 secondes
 quand VLC est fermé ou injoignable : des requêtes locales auxquelles VLC
 répond en quelques millisecondes, sans quota. Une seule réponse manquée est
 ignorée ; après deux, VLC est « Éteint ou injoignable ».
+
+## Lecteur Musique de Gladys 5.3
+
+Depuis Gladys 5.3, chaque VLC est un vrai lecteur dans la boîte **Musique**
+du tableau de bord : pochette, titre, artiste et album, barre de progression,
+aléatoire, répétition (non, toute la playlist, l'élément en cours), sourdine,
+et un panneau pour lire et parcourir.
+
+- **Parcourir** : deux points d'entrée, **Dossier personnel** (de
+  l'utilisateur qui lance VLC) et **Ordinateur**, puis n'importe quel dossier.
+  Dossiers, fichiers audio et vidéo et playlists (M3U, PLS, XSPF…) sont
+  listés ; un dossier se lit en entier. Lire quelque chose remplace la
+  playlist de VLC.
+- **File d'attente** : la playlist de VLC ; un appui saute à un élément.
+- **Absents** : la recherche (VLC n'en a pas) et « lire ensuite / ajouter à
+  la file » (l'interface web de VLC ne sait pas déplacer un élément).
+- **Pochette** : VLC sert l'image telle qu'il la trouve (souvent plusieurs
+  mégaoctets quand elle est intégrée au fichier) ; l'intégration en fait un
+  JPEG de 400 px au plus. Les listes n'ont pas de vignettes.
+- **Sourdine** : l'interface web de VLC n'en a pas ; couper le son met le
+  volume à 0 en gardant le précédent, que le curseur continue d'afficher.
+
+**VLC déjà ajouté** : ouvrez **Intégrations > VLC > Découvrir** et cliquez
+sur **Mettre à jour** sur l'appareil. Il reçoit les nouvelles fonctionnalités
+(pochette, durée, position, aléatoire, répétition) ; Titre, Artiste, Album
+et Sourdine gardent leurs scènes et deviennent des fonctionnalités musique.
+**En lecture** vaut désormais 2 quand VLC est arrêté (0 avant) : adaptez une
+scène qui attend 0 pour détecter un arrêt. La boîte Musique du cœur passe
+en premier ; le widget de l'intégration reste disponible.
 
 ## Widget du tableau de bord
 

@@ -45,8 +45,10 @@ test('the states refresh by themselves, without any onPoll', async (t) => {
   await until(() => stateOf(gladys, 'state') === 'En pause', 2000, 'paused');
   assert.equal(stateOf(gladys, 'playback_state'), 0);
   vlc.stop();
-  await until(() => stateOf(gladys, 'title') === 'Rien en lecture', 2000, 'stopped');
-  assert.equal(stateOf(gladys, 'artist'), '—');
+  // Nothing loaded: the music texts are cleared (Gladys 5.3).
+  await until(() => stateOf(gladys, 'title') === '', 2000, 'stopped');
+  assert.equal(stateOf(gladys, 'artist'), '');
+  assert.equal(stateOf(gladys, 'playback_state'), 2);
   assert.equal(stateOf(gladys, 'progress'), 0);
   assert.equal(onPoll.mock.callCount(), 0);
 });
@@ -181,7 +183,8 @@ test('VLC closed: off after two missed answers, a stop event, then back', async 
     gladys.fake.sceneEvents.map((e) => e.key),
     ['playback_started', 'playback_stopped'],
   );
-  assert.equal(stateOf(gladys, 'playback_state'), 0);
+  assert.equal(stateOf(gladys, 'playback_state'), 2);
+  assert.equal(stateOf(gladys, 'title'), '');
   await until(() => gladys.fake.connectionStatus?.connected === false, 2000, 'status');
   assert.match(gladys.fake.connectionStatus.message.fr, /VLC 1 : pas de réponse/);
 
@@ -256,8 +259,17 @@ test('device commands: buttons, volume, mute', async (t) => {
   // Mute: VLC's web interface has no mute state, the volume goes to 0 and back.
   await set('mute', 1);
   assert.equal(vlc.volume, 0);
-  await until(() => stateOf(gladys, 'volume') === 0, 2000, 'muted');
-  await set('mute', 1);
+  // Gladys 5.3: shown muted, the slider keeps the volume before.
+  await until(() => stateOf(gladys, 'mute') === 1, 2000, 'muted');
+  assert.equal(stateOf(gladys, 'volume'), 40);
+  await set('mute', 0);
+  assert.equal(vlc.volume, 102);
+  await until(() => stateOf(gladys, 'mute') === 0, 2000, 'unmuted');
+  // The television push button of a device not updated yet: a toggle.
+  const legacyMute = { ...feature('mute'), category: 'television', type: 'volume-mute' };
+  await gladys.fake.setValue(device(), legacyMute, 1);
+  assert.equal(vlc.volume, 0);
+  await gladys.fake.setValue(device(), legacyMute, 1);
   assert.equal(vlc.volume, 102);
 
   // A volume above 100 % in VLC (its slider goes to 125 %) shows as 100.
@@ -281,11 +293,11 @@ test('mute survives a restart of the integration (/data)', async (t) => {
 
   const second = await createAddedWorld({ vlcs: [vlc], dataDir: first.dataDir });
   t.after(() => second.app.stop());
-  await second.gladys.fake.setValue(device(), feature('mute'), 1);
+  await second.gladys.fake.setValue(device(), feature('mute'), 0);
   assert.equal(vlc.volume, 200);
   // Turned down to 0 in VLC's window, then unmuted: no saved volume, 50 %.
   vlc.volume = 0;
-  await second.gladys.fake.setValue(device(), feature('mute'), 1);
+  await second.gladys.fake.setValue(device(), feature('mute'), 0);
   assert.equal(vlc.volume, 128);
 });
 
@@ -319,7 +331,11 @@ test('announcement: the core notification plays, then what played comes back', a
   const ack = await gladys.fake.setValue(device(), feature('notification'), MEDIA.announcement.uri);
   assert.equal(ack.success, true, ack.error);
   assert.equal(vlc.current.uri, MEDIA.announcement.uri);
-  await until(() => stateOf(gladys, 'title') === 'announcement.mp3', 2000, 'announcing');
+  const snapshot = () => hub.instances.get(1).vlc.snapshot;
+  await until(() => snapshot().title === 'announcement.mp3', 2000, 'announcing');
+  await settle(30);
+  // The announcement is not a track to show: the music box keeps the song.
+  assert.equal(stateOf(gladys, 'title'), 'Test Tone 2');
   vlc.finish(); // the last item: VLC stops
   await until(() => vlc.state === 'playing' && vlc.currentId === before, 2000, 'resumed');
   assert.equal(vlc.time, 42, 'the file goes on where it was');
@@ -345,9 +361,10 @@ test('two announcements in a row: both removed, the music comes back once', asyn
   const radio = vlc.currentId;
   const events = gladys.fake.sceneEvents.length;
   await gladys.fake.setValue(device(), feature('notification'), MEDIA.announcement.uri);
-  await until(() => stateOf(gladys, 'title') === 'announcement.mp3', 2000, 'first');
+  const snapshot = () => hub.instances.get(1).vlc.snapshot;
+  await until(() => snapshot().title === 'announcement.mp3', 2000, 'first');
   await gladys.fake.setValue(device(), feature('notification'), 'https://gladys.example.com/b.mp3');
-  await until(() => stateOf(gladys, 'title') === 'b.mp3', 2000, 'second');
+  await until(() => snapshot().title === 'b.mp3', 2000, 'second');
   vlc.finish();
   await until(() => vlc.state === 'playing' && vlc.currentId === radio, 2000, 'radio back');
   await until(() => !hub.instances.get(1).vlc.hold, 2000, 'released');

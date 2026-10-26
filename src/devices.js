@@ -2,15 +2,21 @@
 // VLC instance -> Gladys device, and snapshot -> feature states.
 //
 // Couples chosen among those the Gladys front knows (test/gladys-rules.test.js):
-// - play, pause, previous, next, volume, playback_state: the `music` category,
-//   the one the core's Music dashboard box reads (play/pause, previous, next,
-//   volume slider) — the precedent of gladys-dlna;
+// - play, pause, previous, next, volume: the `music` category, the one the
+//   core's Music dashboard box reads — the precedent of gladys-dlna;
+// - Gladys 5.3 player (capabilities/music.md), published by publishNowPlaying:
+//   playback_state (0 paused, 1 playing, 2 stopped; writable: pause, play,
+//   stop), title, artist, album, artwork (an image key served by the
+//   integration, src/catalog.js), duration and position (seconds; position
+//   writable = seek), shuffle (VLC's random), repeat (off, all = VLC's loop,
+//   one = VLC's repeat), mute. Title, artist and album were text/text and mute
+//   a television button before 1.1.0: same external ids, converted in place by
+//   the "Update" of the Discover tab;
 // - notification: music/play_notification, the target of the core's "Talk on
 //   a speaker" scene action (the value is the URL of an MP3);
-// - stop, mute: the core's music category has neither, so they borrow the
-//   television remote-control keys, rendered as push buttons in the device box;
-// - state, title, artist, album: text/text (several of them: the dashboard
-//   shows their names);
+// - stop: the core's music category has none, it borrows the television
+//   remote-control key, rendered as a push button in the device box;
+// - state: text/text, the state in words (kept from 1.0);
 // - progress: level-sensor/liquid-level-percent, the only read-only percent
 //   couple with a label (precedent of gladys-kodi, gladys-octoprint);
 // - time_left: duration/integer in minutes (duration/decimal is a slider).
@@ -24,9 +30,11 @@ import {
   DEVICE_FEATURE_CATEGORIES as CAT,
   DEVICE_FEATURE_TYPES as TYPE,
   DEVICE_FEATURE_UNITS as UNIT,
+  MUSIC_PLAYBACK_STATE,
+  MUSIC_REPEAT_MODE,
 } from '@gladysassistant/integration-sdk';
-import { isActive, minutesLeftOf, progressOf, volumePercent } from './vlc/model.js';
-import { NAMES, NOTHING_PLAYING, NO_VALUE, STATE_LABELS, UNKNOWN_TITLE } from './texts.js';
+import { isActive, minutesLeftOf, progressOf, repeatModeOf, volumePercent } from './vlc/model.js';
+import { NAMES, NOTHING_PLAYING, STATE_LABELS, UNKNOWN_TITLE } from './texts.js';
 
 export const DEVICE_TYPE = 'vlc';
 
@@ -37,13 +45,25 @@ export const BUTTONS = {
   stop: { category: CAT.TELEVISION, type: TYPE.TELEVISION.STOP },
   previous: { category: CAT.MUSIC, type: TYPE.MUSIC.PREVIOUS },
   next: { category: CAT.MUSIC, type: TYPE.MUSIC.NEXT },
-  mute: { category: CAT.TELEVISION, type: TYPE.TELEVISION.VOLUME_MUTE },
 };
 
-// MUSIC_PLAYBACK_STATE of the core: 1 playing, 0 anything else.
-export const PLAYBACK_STATE = { PLAYING: 1, NOT_PLAYING: 0 };
+// MUSIC_PLAYBACK_STATE of the core, by state of src/vlc/model.js.
+export const PLAYBACK_STATES = {
+  playing: MUSIC_PLAYBACK_STATE.PLAYING,
+  paused: MUSIC_PLAYBACK_STATE.PAUSED,
+  stopped: MUSIC_PLAYBACK_STATE.IDLE,
+  off: MUSIC_PLAYBACK_STATE.IDLE,
+};
+
+export const REPEAT_MODES = {
+  off: MUSIC_REPEAT_MODE.OFF,
+  all: MUSIC_REPEAT_MODE.ALL,
+  one: MUSIC_REPEAT_MODE.ONE,
+};
 
 const MAX_MINUTES = 6_000; // 100 hours
+// Bound of the duration and the position (100 hours, like time_left).
+export const MAX_SECONDS = MAX_MINUTES * 60;
 
 export function deviceIds(gladys, slot) {
   return gladys.externalIds(DEVICE_TYPE, String(slot));
@@ -71,18 +91,25 @@ export function buildDevice(gladys, { slot, url, host }, language) {
   });
   const text = { category: CAT.TEXT, type: TYPE.TEXT.TEXT, min: 0, max: 0 };
 
+  const music = (key, type, fields = {}) =>
+    feature(key, { category: CAT.MUSIC, type, min: 0, max: 0, keep_history: false, ...fields });
+  // Writable music features: VLC is read back right after a command.
+  const control = { read_only: false, has_feedback: true };
+
   const features = [
-    feature('playback_state', {
-      category: CAT.MUSIC,
-      type: TYPE.MUSIC.PLAYBACK_STATE,
-      min: 0,
-      max: 1,
-      keep_history: true,
-    }),
+    // Read-only, max 1 before 1.1.0: same external id, the "Update" of the
+    // Discover tab makes it writable.
+    music('playback_state', TYPE.MUSIC.PLAYBACK_STATE, { max: 2, ...control }),
     feature('state', text),
-    feature('title', text),
-    feature('artist', text),
-    feature('album', text),
+    // text/text before 1.1.0: same external ids, converted in place.
+    music('title', TYPE.MUSIC.TITLE),
+    music('artist', TYPE.MUSIC.ARTIST),
+    music('album', TYPE.MUSIC.ALBUM),
+    music('artwork', TYPE.MUSIC.ARTWORK),
+    music('duration', TYPE.MUSIC.DURATION, { unit: UNIT.SECONDS, max: MAX_SECONDS }),
+    music('position', TYPE.MUSIC.POSITION, { unit: UNIT.SECONDS, max: MAX_SECONDS, ...control }),
+    music('shuffle', TYPE.MUSIC.SHUFFLE, { max: 1, ...control }),
+    music('repeat', TYPE.MUSIC.REPEAT, { max: MUSIC_REPEAT_MODE.ONE, ...control }),
     feature('progress', {
       category: CAT.LEVEL_SENSOR,
       type: TYPE.LEVEL_SENSOR.LIQUID_LEVEL_PERCENT,
@@ -99,20 +126,13 @@ export function buildDevice(gladys, { slot, url, host }, language) {
       max: MAX_MINUTES,
       keep_history: false,
     }),
-    feature('volume', {
-      category: CAT.MUSIC,
-      type: TYPE.MUSIC.VOLUME,
-      unit: UNIT.PERCENT,
-      min: 0,
-      max: 100,
-      read_only: false,
-      // The volume is read back from VLC right after a change.
-      has_feedback: true,
-    }),
+    music('volume', TYPE.MUSIC.VOLUME, { unit: UNIT.PERCENT, max: 100, ...control }),
   ];
   for (const [key, couple] of Object.entries(BUTTONS)) {
     features.push(feature(key, { ...couple, min: 0, max: 1, read_only: false }));
   }
+  // A television push button before 1.1.0 (it toggled): same external id.
+  features.push(music('mute', TYPE.MUSIC.MUTE, { max: 1, ...control }));
   features.push(
     feature('notification', {
       category: CAT.MUSIC,
@@ -146,37 +166,70 @@ export function titleText(snapshot, language) {
 }
 
 /**
- * Feature states of a snapshot, in the publishStates format. Progress in
- * whole percent and time left in whole minutes: they change a few times a
- * minute at most (Gladys takes 300 states a minute for the whole
- * integration). The volume is capped at 100 % (VLC goes up to 125 % and
- * beyond); an unknown volume is left out (Gladys keeps the last one).
+ * The legacy feature states of a snapshot (publishChangedStates): the state
+ * in words, progress in whole percent and time left in whole minutes (they
+ * change a few times a minute at most). Everything of the music category goes
+ * through nowPlaying() instead: one channel per feature.
  */
 export function buildStates(gladys, slot, snapshot, language) {
   const ids = deviceIds(gladys, slot);
+  return [
+    {
+      device_feature_external_id: ids.feature('state'),
+      text: pick(STATE_LABELS, language)[snapshot.state],
+    },
+    { device_feature_external_id: ids.feature('progress'), state: progressOf(snapshot) },
+    {
+      device_feature_external_id: ids.feature('time_left'),
+      state: Math.min(MAX_MINUTES, minutesLeftOf(snapshot)),
+    },
+  ];
+}
+
+/**
+ * The snapshot given to publishNowPlaying (Gladys 5.3).
+ * - Nothing loaded (stopped: VLC forgets the current item; VLC closed): the
+ *   texts and the artwork are cleared explicitly (an absent key means
+ *   "unchanged").
+ * - A web radio: the song it announces as title, its station as artist when
+ *   the song has none (describeItem), duration 0, position counted by VLC.
+ * - Mute: VLC's web interface has none; the integration mutes by setting the
+ *   volume to 0 and remembering the one before (src/instance.js). A volume of
+ *   0 is shown muted, with the remembered volume on the slider.
+ * - VLC closed: the modes and the volume are left as they were.
+ * @param {object} snapshot
+ * @param {object} [options]
+ * @param {string|null} [options.artworkUrl] the source given to artworkKey
+ * @param {number|null} [options.muteBackup] the volume (VLC scale) a mute keeps
+ */
+export function nowPlaying(snapshot, { artworkUrl = null, muteBackup = null } = {}) {
   const active = isActive(snapshot);
-  const states = [];
-  const add = (key, value) => {
-    if (value !== null && value !== undefined) {
-      states.push({ device_feature_external_id: ids.feature(key), state: value });
-    }
+  const duration = active && snapshot.length !== null ? Math.min(MAX_SECONDS, snapshot.length) : 0;
+  const time = active && snapshot.time !== null ? snapshot.time : 0;
+  const result = {
+    playback_state: PLAYBACK_STATES[snapshot.state] ?? MUSIC_PLAYBACK_STATE.IDLE,
+    title: active ? snapshot.title : '',
+    artist: active ? snapshot.artist : '',
+    album: active ? snapshot.album : '',
+    artwork_url: active ? artworkUrl : null,
+    duration,
+    position: duration > 0 ? Math.min(time, duration) : time,
   };
-  const addText = (key, value) => {
-    states.push({ device_feature_external_id: ids.feature(key), text: value });
-  };
-  add(
-    'playback_state',
-    snapshot.state === 'playing' ? PLAYBACK_STATE.PLAYING : PLAYBACK_STATE.NOT_PLAYING,
-  );
-  addText('state', pick(STATE_LABELS, language)[snapshot.state]);
-  addText('title', titleText(snapshot, language));
-  addText('artist', (active && snapshot.artist) || NO_VALUE);
-  addText('album', (active && snapshot.album) || NO_VALUE);
-  add('progress', progressOf(snapshot));
-  add('time_left', Math.min(MAX_MINUTES, minutesLeftOf(snapshot)));
-  const volume = snapshot.state === 'off' ? null : volumePercent(snapshot);
-  add('volume', volume === null ? null : Math.min(100, volume));
-  return states;
+  if (snapshot.state === 'off') {
+    return result;
+  }
+  result.shuffle = snapshot.random;
+  result.repeat = REPEAT_MODES[repeatModeOf(snapshot)];
+  if (snapshot.volumeRaw !== null) {
+    const muted = snapshot.volumeRaw === 0;
+    result.mute = muted;
+    const shown =
+      muted && muteBackup !== null
+        ? volumePercent({ volumeRaw: muteBackup })
+        : volumePercent(snapshot);
+    result.volume = Math.min(100, shown);
+  }
+  return result;
 }
 
 /** `ext:...:vlc:2` -> 2, or null when the id is not one of ours. */

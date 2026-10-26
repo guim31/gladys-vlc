@@ -5,6 +5,7 @@
 // -----------------------------------------------------------------------------
 
 import { createLogger } from '@gladysassistant/integration-sdk';
+import * as catalog from './catalog.js';
 import { normalizeConfig } from './config.js';
 import { Hub } from './hub.js';
 import { SCENE_ACTIONS } from './scenes.js';
@@ -98,6 +99,13 @@ export function registerHandlers(gladys, options = {}) {
     );
   }
   gladys.onWidgetGetImage(whenReady((imageKey) => hub.widgetImage(imageKey)));
+
+  // Gladys 5.3 music panel (manifest `music`: browse and queue).
+  gladys.onMusicBrowse(whenReady((device, options) => catalog.browse(hub, device, options)));
+  gladys.onMusicPlay(whenReady((device, media, mode) => catalog.play(hub, device, media, mode)));
+  gladys.onMusicQueueGet(whenReady((device, options) => catalog.queueGet(hub, device, options)));
+  gladys.onMusicQueuePlay(whenReady((device, index) => catalog.queuePlay(hub, device, index)));
+  gladys.onMusicGetArtwork(whenReady((key) => hub.musicArtwork(key)));
 
   return {
     hub,

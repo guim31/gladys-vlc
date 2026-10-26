@@ -103,11 +103,11 @@ Each VLC is a device with these features:
 
 | Feature        | What it shows or does                                            |
 | -------------- | ---------------------------------------------------------------- |
-| Playing        | 1 while VLC plays, 0 otherwise (paused, stopped, closed)         |
+| Playing        | 1 playing, 0 paused, 2 stopped or closed; writable (Gladys 5.3)  |
 | Playback state | Playing, Paused, Stopped, or Off or unreachable                  |
 | Title          | The title of the item; for a web radio, the song it announces    |
 | Artist         | The artist; for a web radio without one, the name of the station |
-| Album          | The album (— when unknown)                                       |
+| Album          | The album (empty when unknown or when nothing plays)             |
 | Progress       | The percentage played (0 for a live stream)                      |
 | Time left      | The minutes left (0 for a live stream)                           |
 | Volume         | A slider, 0 to 100 %                                             |
@@ -115,7 +115,7 @@ Each VLC is a device with these features:
 | Pause          | Pauses (nothing happens when nothing plays)                      |
 | Stop           | Stops                                                            |
 | Previous, Next | Moves in the playlist                                            |
-| Mute           | Mutes, or brings the volume back                                 |
+| Mute           | On or off: mutes, or brings the volume back                      |
 | Notification   | Used by the core's **Talk on a speaker** scene action            |
 
 **Volume**: VLC's own slider goes up to 125 % (and beyond from the web
@@ -141,6 +141,34 @@ not added to Gladys yet, and every 30 seconds when VLC is closed or
 unreachable — local requests that VLC answers in a few milliseconds, with no
 quota. A single missed answer is ignored; after two, VLC is "Off or
 unreachable".
+
+## Gladys 5.3 Music player
+
+From Gladys 5.3, each VLC is a full player in the core's **Music** dashboard
+box: artwork, title, artist and album, a progress bar, shuffle, repeat
+(off, the whole playlist, the current item), mute, and a panel to read and
+browse.
+
+- **Browse**: two entry points, **Home folder** (of the user running VLC) and
+  **Computer**, then any folder. Folders, audio and video files and playlists
+  (M3U, PLS, XSPF…) are listed; a folder can be played as a whole. Playing
+  something replaces VLC's playlist.
+- **Queue**: VLC's playlist; a tap jumps to an item.
+- **Not available**: search (VLC has none) and "play next / add to queue"
+  (VLC's web interface cannot move an item in its playlist).
+- **Artwork**: VLC serves the cover as it finds it (often several megabytes
+  when it is embedded in a file); the integration makes it a JPEG of 400 px at
+  most. The lists have no thumbnails.
+- **Mute**: VLC's web interface has none; muting sets the volume to 0 and
+  keeps the one before, which the slider goes on showing.
+
+**Already added VLC**: open **Integrations > VLC > Discover** and click
+**Update** on the device. It gets the new features (artwork, duration,
+position, shuffle, repeat); Title, Artist, Album and Mute keep their
+history and scenes and become music features. The **Playing** feature now
+reads 2 when VLC is stopped (it read 0): adjust a scene that waits for 0 to
+detect a stop. The core's Music box comes first; the integration's own widget
+stays available.
 
 ## Dashboard widget
 

@@ -70,10 +70,10 @@ test('the manifest version is the package version, and the image is tagged with 
   );
 });
 
-test('scene triggers, scene actions and widgets require Gladys >= 5.1.0', () => {
-  assert.ok(isAtLeast(minGladysVersion(), [5, 1, 0]), manifest.gladys_version);
-  // No widget button opens a form: 5.2.0 is not needed.
-  assert.ok(!isAtLeast(minGladysVersion(), [5, 2, 0]), 'keep 5.1 users');
+test('the music field requires Gladys >= 5.3.0, and declares what VLC does', () => {
+  assert.ok(isAtLeast(minGladysVersion(), [5, 3, 0]), manifest.gladys_version);
+  // No pl_move in VLC's web interface: "play next" cannot be honoured.
+  assert.deepEqual(manifest.music, { browse: true, search: false, queue: true, append: false });
   for (const widget of manifest.widgets) {
     assert.equal(JSON.stringify(widget).includes('"fields"'), false, widget.key);
   }
@@ -244,7 +244,7 @@ test('the catalog description holds 10 to 100 characters per language', () => {
   }
 });
 
-test('the device: 15 features, keys frozen, published without core polling', async (t) => {
+test('the device: 21 features, keys frozen, published without core polling', async (t) => {
   const world = await createWorld();
   t.after(() => world.app.stop());
   const device = created(world.gladys);
@@ -258,6 +258,11 @@ test('the device: 15 features, keys frozen, published without core polling', asy
       'title',
       'artist',
       'album',
+      'artwork',
+      'duration',
+      'position',
+      'shuffle',
+      'repeat',
       'progress',
       'time_left',
       'volume',
@@ -270,16 +275,25 @@ test('the device: 15 features, keys frozen, published without core polling', asy
       'notification',
     ],
   );
+  // Every writable music feature is confirmed by VLC (Gladys 5.3).
+  for (const f of device.features.filter((f) => f.category === 'music' && !f.read_only)) {
+    const command = ['play', 'pause', 'previous', 'next', 'play_notification'].includes(f.type);
+    assert.equal(f.has_feedback, !command, f.type);
+  }
   assert.deepEqual(
     device.features.filter((f) => !f.read_only).map((f) => `${f.category}/${f.type}`),
     [
+      'music/playback_state',
+      'music/position',
+      'music/shuffle',
+      'music/repeat',
       'music/volume',
       'music/play',
       'music/pause',
       'television/stop',
       'music/previous',
       'music/next',
-      'television/volume-mute',
+      'music/mute',
       'music/play_notification',
     ],
   );

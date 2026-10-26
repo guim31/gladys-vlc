@@ -35,6 +35,11 @@ export function emptySnapshot(state = 'off') {
     length: null,
     volumeRaw: null,
     hasArt: false,
+    // Playback modes: VLC's `random`, `loop` (the playlist) and `repeat`
+    // (the current item). Over HTTP, setting loop clears repeat and back.
+    random: false,
+    loop: false,
+    repeat: false,
   };
 }
 
@@ -89,6 +94,9 @@ export function readSnapshot(status) {
   const snapshot = emptySnapshot(state);
   const volume = finite(status?.volume);
   snapshot.volumeRaw = volume === null ? null : Math.max(0, Math.round(volume));
+  snapshot.random = status?.random === true;
+  snapshot.loop = status?.loop === true;
+  snapshot.repeat = status?.repeat === true;
   if (state === 'stopped') {
     return snapshot;
   }
@@ -102,6 +110,14 @@ export function readSnapshot(status) {
   snapshot.length = length !== null && length > 0 ? length : null;
   snapshot.hasArt = typeof meta.artwork_url === 'string' && meta.artwork_url !== '';
   return snapshot;
+}
+
+/** The repeat mode of a snapshot: repeat (the item) wins over loop (the playlist). */
+export function repeatModeOf(snapshot) {
+  if (snapshot.repeat) {
+    return 'one';
+  }
+  return snapshot.loop ? 'all' : 'off';
 }
 
 /** VLC's volume as a percentage (may exceed 100), or null. */
